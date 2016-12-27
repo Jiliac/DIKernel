@@ -538,6 +538,7 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
 	int retval = 0;
+    printk("\n\ncall_usermodehelper_exec function \n\n");
 
 	if (!sub_info->path) {
 		call_usermodehelper_freeinfo(sub_info);
@@ -599,6 +600,8 @@ int call_usermodehelper(char *path, char **argv, char **envp, int wait)
 {
 	struct subprocess_info *info;
 	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
+    // @TODO DELETE
+    printk(KERN_WARNING "\n\ncalling a kernel module ??\n\n");
 
 	info = call_usermodehelper_setup(path, argv, envp, gfp_mask,
 					 NULL, NULL, NULL);

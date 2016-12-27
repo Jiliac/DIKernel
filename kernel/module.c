@@ -2505,6 +2505,7 @@ static int copy_module_from_user(const void __user *umod, unsigned long len,
 				  struct load_info *info)
 {
 	int err;
+    printk("\n\nIN MODULE LOADING ?\n\n");
 
 	info->len = len;
 	if (info->len < sizeof(*(info->hdr)))
@@ -2938,6 +2939,7 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 	/* Module within temporary copy. */
 	struct module *mod;
 	int err;
+    printk("\n\nIN MODULE LOADING ? (2)\n\n");
 
 	mod = setup_load_info(info, flags);
 	if (IS_ERR(mod))

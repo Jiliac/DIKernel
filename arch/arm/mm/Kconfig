@@ -453,6 +453,7 @@ config CPU_32v6K
 
 config CPU_32v7
 	bool
+	select CPU_USE_DOMAINS if MMU
 
 config CPU_32v7M
 	bool
