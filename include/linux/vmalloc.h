@@ -93,6 +93,13 @@ extern int remap_vmalloc_range_partial(struct vm_area_struct *vma,
 extern int remap_vmalloc_range(struct vm_area_struct *vma, void *addr,
 							unsigned long pgoff);
 void vmalloc_sync_all(void);
+
+/*
+ * Adding this to get vmap_area
+ * To walk page tables
+ */
+struct vmap_area;
+struct vmap_area *find_vmap_area(unsigned long addr);
  
 /*
  *	Lowlevel-APIs (not for driver use!)
