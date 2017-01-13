@@ -7,6 +7,8 @@
 #ifndef __TUNER_XC2028_H__
 #define __TUNER_XC2028_H__
 
+#include <linux/videodev2.h>
+#include "tuner-i2c.h"
 #include "dvb_frontend.h"
 
 #define XC2028_DEFAULT_FIRMWARE "xc3028-v27.fw"
@@ -44,6 +46,46 @@ struct xc2028_ctrl {
 	unsigned int		demod;
 	enum firmware_type	type:2;
 };
+
+struct firmware_properties {
+	unsigned int	type;
+	v4l2_std_id	id;
+	v4l2_std_id	std_req;
+	__u16		int_freq;
+	unsigned int	scode_table;
+	int 		scode_nr;
+};
+
+enum xc2028_state {
+	XC2028_NO_FIRMWARE = 0,
+	XC2028_WAITING_FIRMWARE,
+	XC2028_ACTIVE,
+	XC2028_SLEEP,
+	XC2028_NODEV,
+};
+
+struct xc2028_data {
+	struct list_head        hybrid_tuner_instance_list;
+	struct tuner_i2c_props  i2c_props;
+	__u32			frequency;
+
+	enum xc2028_state	state;
+	const char		*fname;
+
+	struct firmware_description *firm;
+	int			firm_size;
+	__u16			firm_version;
+
+	__u16			hwmodel;
+	__u16			hwvers;
+
+	struct xc2028_ctrl	ctrl;
+
+	struct firmware_properties cur_fw;
+
+	struct mutex lock;
+};
+
 
 struct xc2028_config {
 	struct i2c_adapter *i2c_adap;

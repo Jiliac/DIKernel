@@ -84,45 +84,6 @@ struct firmware_description {
 	unsigned int  size;
 };
 
-struct firmware_properties {
-	unsigned int	type;
-	v4l2_std_id	id;
-	v4l2_std_id	std_req;
-	__u16		int_freq;
-	unsigned int	scode_table;
-	int 		scode_nr;
-};
-
-enum xc2028_state {
-	XC2028_NO_FIRMWARE = 0,
-	XC2028_WAITING_FIRMWARE,
-	XC2028_ACTIVE,
-	XC2028_SLEEP,
-	XC2028_NODEV,
-};
-
-struct xc2028_data {
-	struct list_head        hybrid_tuner_instance_list;
-	struct tuner_i2c_props  i2c_props;
-	__u32			frequency;
-
-	enum xc2028_state	state;
-	const char		*fname;
-
-	struct firmware_description *firm;
-	int			firm_size;
-	__u16			firm_version;
-
-	__u16			hwmodel;
-	__u16			hwvers;
-
-	struct xc2028_ctrl	ctrl;
-
-	struct firmware_properties cur_fw;
-
-	struct mutex lock;
-};
-
 #define i2c_send(priv, buf, size) ({					\
 	int _rc;							\
 	_rc = tuner_i2c_xfer_send(&priv->i2c_props, buf, size);		\
@@ -1387,12 +1348,13 @@ static void load_firmware_cb(const struct firmware *fw,
 	priv->state = XC2028_ACTIVE;
 }
 
-static int xc2028_set_config(struct dvb_frontend *fe, void *priv_cfg)
+int xc2028_set_config(struct dvb_frontend *fe, void *priv_cfg)
 {
 	struct xc2028_data *priv = fe->tuner_priv;
 	struct xc2028_ctrl *p    = priv_cfg;
 	int                 rc   = 0;
 
+    printk("In xc2028_set_config function from the tuner-xc2028 driver.\n");
 	tuner_dbg("%s called\n", __func__);
 
 	mutex_lock(&priv->lock);
@@ -1402,13 +1364,18 @@ static int xc2028_set_config(struct dvb_frontend *fe, void *priv_cfg)
 	 * For the firmware name, keep a local copy of the string,
 	 * in order to avoid troubles during device release.
 	 */
+    printk("xc2028_set_config mark 0.a.\n");
 	kfree(priv->ctrl.fname);
+    printk("xc2028_set_config mark 0.b.\n");
 	memcpy(&priv->ctrl, p, sizeof(priv->ctrl));
+    printk("xc2028_set_config mark 0.c.\n");
 	if (p->fname) {
 		priv->ctrl.fname = kstrdup(p->fname, GFP_KERNEL);
+        printk("xc2028_set_config mark 0.d.\n");
 		if (priv->ctrl.fname == NULL)
 			rc = -ENOMEM;
 	}
+    printk("xc2028_set_config mark 1.\n");
 
 	/*
 	 * If firmware name changed, frees firmware. As free_firmware will
@@ -1417,6 +1384,7 @@ static int xc2028_set_config(struct dvb_frontend *fe, void *priv_cfg)
 	if (!firmware_name[0] && p->fname &&
 	    priv->fname && strcmp(p->fname, priv->fname))
 		free_firmware(priv);
+    printk("xc2028_set_config mark 2.\n");
 
 	if (priv->ctrl.max_len < 9)
 		priv->ctrl.max_len = 13;
@@ -1426,12 +1394,15 @@ static int xc2028_set_config(struct dvb_frontend *fe, void *priv_cfg)
 			priv->fname = priv->ctrl.fname;
 		else
 			priv->fname = firmware_name;
+        printk("xc2028_set_config mark 3.\n");
 
 		rc = request_firmware_nowait(THIS_MODULE, 1,
 					     priv->fname,
 					     priv->i2c_props.adap->dev.parent,
 					     GFP_KERNEL,
 					     fe, load_firmware_cb);
+        printk("xc2028_set_config mark 4.\n");
+
 		if (rc < 0) {
 			tuner_err("Failed to request firmware %s\n",
 				  priv->fname);
@@ -1440,9 +1411,11 @@ static int xc2028_set_config(struct dvb_frontend *fe, void *priv_cfg)
 			priv->state = XC2028_WAITING_FIRMWARE;
 	}
 	mutex_unlock(&priv->lock);
+    printk("xc2028_set_config mark 5.\n");
 
 	return rc;
 }
+EXPORT_SYMBOL(xc2028_set_config);
 
 static const struct dvb_tuner_ops xc2028_dvb_tuner_ops = {
 	.info = {
@@ -1468,8 +1441,9 @@ struct dvb_frontend *xc2028_attach(struct dvb_frontend *fe,
 	struct xc2028_data *priv;
 	int instance;
 
-	if (debug)
-		printk(KERN_DEBUG "xc2028: Xcv2028/3028 init called!\n");
+	//if (debug)
+		//printk(KERN_DEBUG "xc2028: Xcv2028/3028 init called!\n");
+    printk("xc2028: Xcv2028/3028 init called!\n");
 
 	if (NULL == cfg)
 		return NULL;
@@ -1481,16 +1455,19 @@ struct dvb_frontend *xc2028_attach(struct dvb_frontend *fe,
 
 	mutex_lock(&xc2028_list_mutex);
 
+    printk("xc2028_attach mark 0.\n");
 	instance = hybrid_tuner_request_state(struct xc2028_data, priv,
 					      hybrid_tuner_instance_list,
 					      cfg->i2c_adap, cfg->i2c_addr,
 					      "xc2028");
+    printk("xc2028_attach mark 1.\n");
 	switch (instance) {
 	case 0:
 		/* memory allocation failure */
 		goto fail;
 	case 1:
 		/* new tuner instance */
+        printk("drivers/media/tuners/tuners-xc2028.c: new tuner instance\n");
 		priv->ctrl.max_len = 13;
 
 		mutex_init(&priv->lock);
@@ -1502,12 +1479,14 @@ struct dvb_frontend *xc2028_attach(struct dvb_frontend *fe,
 		fe->tuner_priv = priv;
 		break;
 	}
+    printk("xc2028_attach mark 2.\n");
 
 	memcpy(&fe->ops.tuner_ops, &xc2028_dvb_tuner_ops,
 	       sizeof(xc2028_dvb_tuner_ops));
 
 	tuner_info("type set to %s\n", "XCeive xc2028/xc3028 tuner");
 
+    printk("xc2028_attach mark 3.\n");
 	if (cfg->ctrl)
 		xc2028_set_config(fe, cfg->ctrl);
 
