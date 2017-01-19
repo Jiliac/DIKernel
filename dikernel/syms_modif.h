@@ -4,6 +4,6 @@
 #include <linux/module.h>
 
 void modif_symbol(void);
-const struct kernel_symbol * find_dummy_sym(void);
+Elf32_Sym * find_elf_syms(char *, struct module *);
 
 #endif
