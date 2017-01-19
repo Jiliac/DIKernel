@@ -462,7 +462,7 @@ static struct module *find_module_all(const char *name, size_t len,
 			continue;
 		if (strlen(mod->name) == len && !memcmp(mod->name, name, len))
 			return mod;
-	}
+       }
 	return NULL;
 }
 
@@ -2385,6 +2385,7 @@ static void dynamic_debug_remove(struct _ddebug *debug)
 
 void * __weak module_alloc(unsigned long size)
 {
+    printk("vmalloc_exec called by module_alloc.\n");
 	return vmalloc_exec(size);
 }
 
@@ -2505,7 +2506,6 @@ static int copy_module_from_user(const void __user *umod, unsigned long len,
 				  struct load_info *info)
 {
 	int err;
-    printk("\n\nIN MODULE LOADING ?\n\n");
 
 	info->len = len;
 	if (info->len < sizeof(*(info->hdr)))
@@ -2516,6 +2516,7 @@ static int copy_module_from_user(const void __user *umod, unsigned long len,
 		return err;
 
 	/* Suck in entire file: we'll want most of it. */
+    printk("kernel/module.c: vmalloc-ing module from userspace in copy_module_from_user\n");
 	info->hdr = __vmalloc(info->len,
 			GFP_KERNEL | __GFP_HIGHMEM | __GFP_NOWARN, PAGE_KERNEL);
 	if (!info->hdr)
@@ -2939,7 +2940,7 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 	/* Module within temporary copy. */
 	struct module *mod;
 	int err;
-    printk("\n\nIN MODULE LOADING ? (2)\n\n");
+    printk("kernel/module.c: layout_and_allocate called\n\n");
 
 	mod = setup_load_info(info, flags);
 	if (IS_ERR(mod))

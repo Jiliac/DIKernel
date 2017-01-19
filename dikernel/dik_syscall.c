@@ -3,7 +3,7 @@
 #include <linux/slab.h>     // for kmalloc
 #include <linux/kmod.h>     // for request_module
 #include "table_walk.h"
-#include "kallsyms_modif.h"
+#include "syms_modif.h"
 
 #define VMALLOC_SIZE   1000000 
 #define BUF_SIZE       1000000 
@@ -29,6 +29,6 @@ void vmallocing(void) {
 }
 
 asmlinkage long sys_dikcall(void) {
-    kallsyms_modif_try();
+    modif_symbol();
     return 0;
 }
