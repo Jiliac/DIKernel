@@ -30,5 +30,6 @@ void vmallocing(void) {
 
 asmlinkage long sys_dikcall(void) {
     modif_symbol();
+    //find_dummy_sym();
     return 0;
 }

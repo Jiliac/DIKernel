@@ -1,5 +1,4 @@
 //#include <linux/kallsyms.h>
-#include <linux/module.h>   // for find_module
 #include "syms_modif.h"
 
 #define MODULE_SEARCH   "tuner_xc2028"
@@ -24,7 +23,7 @@ void modif_symbol() {
     if(sym) {
         printk("dikcmd/kallsyms_modif.c: We found a kernel symbol!\n");
         print_symbol(sym);
-        sym->value = sym->value + 8;
+        sym->value = find_dummy_sym()->value;
         print_symbol(sym);
     } else {
         const struct kernel_symbol * start;
@@ -37,4 +36,27 @@ void modif_symbol() {
     }
 
     return;
+}
+
+/****************************************************************************
+******************* Providing a dummy symbol to point to ********************
+****************************************************************************/
+
+void dummy_symbol(void) {
+    printk("You are pointing to a dummy symbol :p .\n");
+}
+EXPORT_SYMBOL(dummy_symbol);
+
+const struct kernel_symbol * find_dummy_sym() {
+    const struct kernel_symbol * sym;
+    
+    sym = find_symbol("dummy_symbol", NULL, NULL, true, true);
+    if(sym){
+        printk("dikcmd/kallsyms_modif.c: We found a kernel symbol!\n");
+        return sym;
+    }
+    else
+        printk("dikcmd/kallsyms_modif.c: didn't find a kernel symbol :(\n");
+
+    return sym;
 }
