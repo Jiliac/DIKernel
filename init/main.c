@@ -88,6 +88,8 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
+#include<linux/dik/wrapper.h> 
+
 static int kernel_init(void *);
 
 extern void init_IRQ(void);
@@ -1031,4 +1033,5 @@ static noinline void __init kernel_init_freeable(void)
 
 	integrity_load_keys();
 	load_default_modules();
+    setting_wrappers();
 }

@@ -3714,8 +3714,11 @@ static void cdrom_sysctl_unregister(void)
 
 #endif /* CONFIG_SYSCTL */
 
+#include<linux/slab.h>
 static int __init cdrom_init(void)
 {
+    printk("calling cdrom_init\n");
+    __kmalloc(sizeof(int), GFP_KERNEL);
 	cdrom_sysctl_register();
 
 	return 0;

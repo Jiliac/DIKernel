@@ -29,6 +29,6 @@ void vmallocing(void) {
 }
 
 asmlinkage long sys_dikcall(void) {
-    modif_symbol();
+    vmallocing();
     return 0;
 }
