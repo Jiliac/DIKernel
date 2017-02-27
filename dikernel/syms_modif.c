@@ -5,11 +5,15 @@
 #define MODULE_SEARCH   "tuner_xc2028"
 #define SYM_SEARCH      "xc2028_set_config"
 
+/****************************************************************************
+********************************** Utility **********************************
+****************************************************************************/
 #ifdef CONFIG_KALLSYMS
 
-/****************************************************************************
-*************************** add_kallsyms analysis ***************************
-****************************************************************************/
+void modify_elf_sym(Elf_Sym * sym, unsigned long value) {
+    sym->st_value = value;
+}
+
 Elf_Sym * find_elf_sym(char * name, struct module * mod) {
     Elf_Sym * start;
     int i;
@@ -27,12 +31,29 @@ Elf_Sym * find_elf_sym(char * name, struct module * mod) {
     return NULL;
 }
 
-void modify_elf_sym(Elf_Sym * sym, unsigned long value) {
-    sym->st_value = value;
-}
-
 #endif /*CONFIG_KALLSYMS*/
 
+/****************************************************************************
+*************************** General Sym Modification ************************
+****************************************************************************/
+
+void modify_symbol(char * target_name, unsigned long new_value) {
+    struct kernel_symbol * sym;
+    
+    sym = (struct kernel_symbol*) find_symbol(target_name, NULL, NULL, true, true);
+    if(sym){
+        printk("dikcmd/syms_modif.c: We found %s symbol!\n", target_name);
+    }
+    else{
+        printk("dikcmd/syms_modif.c: didn't find %s symbol.\n", target_name);
+        return;
+    }
+    sym->value = new_value;
+}
+
+/****************************************************************************
+*************************** add_kallsyms analysis ***************************
+****************************************************************************/
 static const struct kernel_symbol * find_dummy_sym(void);
 
 static void print_symbol(const struct kernel_symbol * sym) {
