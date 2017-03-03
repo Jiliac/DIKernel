@@ -2516,7 +2516,6 @@ static int copy_module_from_user(const void __user *umod, unsigned long len,
 		return err;
 
 	/* Suck in entire file: we'll want most of it. */
-    printk("kernel/module.c: vmalloc-ing module from userspace in copy_module_from_user\n");
 	info->hdr = __vmalloc(info->len,
 			GFP_KERNEL | __GFP_HIGHMEM | __GFP_NOWARN, PAGE_KERNEL);
 	if (!info->hdr)
@@ -2805,6 +2804,7 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 	return 0;
 }
 
+#include <linux/dik/domain.h>
 static int move_module(struct module *mod, struct load_info *info)
 {
 	int i;
@@ -2841,6 +2841,8 @@ static int move_module(struct module *mod, struct load_info *info)
 		mod->module_init = ptr;
 	} else
 		mod->module_init = NULL;
+
+    module_change_domain(mod);
 
 	/* Transfer each section which specifies SHF_ALLOC */
 	pr_debug("final section addresses:\n");
@@ -2940,7 +2942,6 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 	/* Module within temporary copy. */
 	struct module *mod;
 	int err;
-    printk("kernel/module.c: layout_and_allocate called\n\n");
 
 	mod = setup_load_info(info, flags);
 	if (IS_ERR(mod))
