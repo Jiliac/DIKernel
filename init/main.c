@@ -88,7 +88,7 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
-#include<linux/dik/wrapper.h> 
+#include<linux/dik/set_wrap.h> 
 
 static int kernel_init(void *);
 
@@ -766,7 +766,7 @@ static int __init_or_module do_one_initcall_debug(initcall_t fn)
 
 	printk(KERN_DEBUG "calling  %pF @ %i\n", fn, task_pid_nr(current));
 	calltime = ktime_get();
-	ret = fn();
+	ret = call_wrapper_initcall(fn);
 	rettime = ktime_get();
 	delta = ktime_sub(rettime, calltime);
 	duration = (unsigned long long) ktime_to_ns(delta) >> 10;
@@ -788,7 +788,7 @@ int __init_or_module do_one_initcall(initcall_t fn)
 	if (initcall_debug)
 		ret = do_one_initcall_debug(fn);
 	else
-		ret = fn();
+        ret = call_wrapper_initcall(fn);
 
 	msgbuf[0] = 0;
 
@@ -1033,5 +1033,6 @@ static noinline void __init kernel_init_freeable(void)
 
 	integrity_load_keys();
 	load_default_modules();
-    setting_wrappers();
+    if(!request_module("domain_switcher"))
+        setting_wrappers();
 }

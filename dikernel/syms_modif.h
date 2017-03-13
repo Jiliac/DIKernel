@@ -3,7 +3,7 @@
 
 #include <linux/module.h>
 
-void modif_symbol(void);
+void modify_symbol(char * target_name, unsigned long new_value);
 Elf32_Sym * find_elf_syms(char *, struct module *);
 
 #endif

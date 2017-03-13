@@ -62,6 +62,9 @@
 #include <uapi/linux/module.h>
 #include "module-internal.h"
 
+#include <linux/dik/domain.h>
+#include <linux/dik/set_wrap.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/module.h>
 
@@ -844,8 +847,9 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
 
 	mutex_unlock(&module_mutex);
 	/* Final destruction now no one is using it. */
+    printk("kernel/module.c: about to call mod->exit if it exits.\n");
 	if (mod->exit != NULL)
-		mod->exit();
+        call_wrapper_exitcall(mod->exit);
 	blocking_notifier_call_chain(&module_notify_list,
 				     MODULE_STATE_GOING, mod);
 	async_synchronize_full();
@@ -2804,7 +2808,6 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 	return 0;
 }
 
-#include <linux/dik/domain.h>
 static int move_module(struct module *mod, struct load_info *info)
 {
 	int i;
