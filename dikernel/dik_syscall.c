@@ -1,11 +1,11 @@
 #include <linux/kernel.h>
 #include <linux/vmalloc.h>
-#include <linux/kmod.h>     // for quest_module
 #include <linux/slab.h>     // for kmalloc
 #include <linux/kmod.h>     // for request_module
-#include "table_walk.h" // for modify_domain_id
-#include "syms_modif.h"
 #include <linux/dik/set_wrap.h> // for call_switcher_to_mod
+#include "dacr.h"           // for read and write dacr
+#include "stack.h"          // for read_sp
+#include "table_walk.h"     // for read_ttbr
 
 #define VMALLOC_SIZE   1000000 
 #define BUF_SIZE       1000000 
@@ -21,10 +21,12 @@ void kmallocing(void) {
     }
 }
 
-extern void switch_to_module(void);
 asmlinkage long sys_dikcall(void) {
-    //request_module("domain_switcher");
-    call_switcher_to_mod();
+    read_DACR();
+    write_DACR(4, 1);
+    read_DACR();
+
+    change_stack_test();
 
     return 0;
 }
