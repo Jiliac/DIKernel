@@ -198,9 +198,19 @@ static struct pg_level pg_level[] = {
 	},
 };
 
+#ifdef CONFIG_CPU_USE_DOMAINS
+static unsigned int get_domain_id(u64 prot) {
+    return (prot >> 5) & 0xf;
+}
+#endif
+
 static void dump_prot(struct pg_state *st, const struct prot_bits *bits, size_t num)
 {
 	unsigned i;
+
+#ifdef CONFIG_CPU_USE_DOMAINS
+    seq_printf(st->seq, "   DID: %2i   ", get_domain_id(st->current_prot));
+#endif
 
 	for (i = 0; i < num; i++, bits++) {
 		const char *s;
