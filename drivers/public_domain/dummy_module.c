@@ -1,7 +1,11 @@
 #include <linux/module.h>
 
+MODULE_LICENSE("GPL");
+
+#include <linux/dik/stack.h>
 static int dummy_init(void) {
     printk("Hi everyone! I'm dummy module starting :-).\n");
+    print_sp();
     return 0;
 }
 

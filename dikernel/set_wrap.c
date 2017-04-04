@@ -79,7 +79,9 @@ void setting_wrappers() {
     printk("!!!!!!!!!! setting_wrappers start !!!!!!!!!!\n");
     if(!request_module(WRAPPER_MODULE)) {
         printk("setting_wrapper: %s module loaded.\n", WRAPPER_MODULE);
-        modify_sym_in_mod(WRAPPER_MODULE, "__kmalloc", "wrapper__kmalloc");
+        modify_sym_in_mod(WRAPPER_MODULE, "__kmalloc", "wrapper___kmalloc");
+        modify_sym_in_mod(WRAPPER_MODULE, "__aeabi_unwind_cpp_pr1",
+            "wrapper___aeabi_unwind_cpp_pr1");
     } else
         printk("Couldn't load %s module.\n", WRAPPER_MODULE);
     printk("!!!!!!!!!! setting_wrappers end !!!!!!!!!!\n");

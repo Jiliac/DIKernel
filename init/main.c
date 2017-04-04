@@ -972,6 +972,7 @@ static int __ref kernel_init(void *unused)
 	      "See Linux Documentation/init.txt for guidance.");
 }
 
+#include <linux/dik/stack.h>    // print stack pointer
 static noinline void __init kernel_init_freeable(void)
 {
 	/*
@@ -1035,4 +1036,5 @@ static noinline void __init kernel_init_freeable(void)
 	load_default_modules();
     if(!request_module("domain_switcher"))
         setting_wrappers();
+    print_sp();
 }
