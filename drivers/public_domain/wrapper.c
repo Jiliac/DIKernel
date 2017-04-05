@@ -5,6 +5,42 @@
 
 MODULE_LICENSE("GPL");
 
+/************************************************************************/
+/* Factorizing as much code as possible  for exit and init call wrapper */
+/************************************************************************/
+#include <linux/dik/stack.h>    // print stack pointer
+#include <linux/dik/thread.h>   // read_current_task_ids
+
+struct sync_args {
+    wait_queue_head_t *wq;
+    int *event;
+};
+
+void wake_calling_thread(struct sync_args *sync) {
+    printk("In call_initfunc thread. ");
+    read_current_task_ids();
+    print_sp();
+
+    *(sync->event) = true;
+    wake_up_interruptible(sync->wq);
+
+    do_exit(0);
+}
+
+void thread_and_sync(int (*threadfn)(void *data), void *data,
+    const char *namefmt, struct sync_args *sync)
+{
+    DECLARE_WAIT_QUEUE_HEAD(wq);
+    int event = false;
+
+    sync->wq = &wq;
+    sync->event = &event;
+    read_current_task_ids();
+    kthread_run(threadfn, data, namefmt);
+
+    wait_event_interruptible(wq, event != 0);
+}
+
 /************ initcall wrapper ************/
 
 #include<linux/init.h>
@@ -20,10 +56,7 @@ MODULE_LICENSE("GPL");
  *      in the (*void data) pointer.
  */
 
-// By data is passed initcall_t fn pointer first,
-// then returns the int.
-// problem if more complicated structure are passed?
-#include <linux/dik/stack.h>    // print stack pointer
+// Problem if more complicated structure are in return?
 
 struct initcall_args {
     // these two are specific to each wrapper
@@ -31,64 +64,72 @@ struct initcall_args {
     int ret;
 
     //synchronisation
-    wait_queue_head_t *wq;
-    int *event;
+    struct sync_args *sync;
 };
 
 int call_initfunc(void * data) {
     struct initcall_args *args;
     initcall_t fn;
-    wait_queue_head_t *wq;
-    int *event;
 
     args = (struct initcall_args*) data;
     fn = args->fn;
-    wq = args->wq;
-    event = args->event;
-
-    print_sp();
     args->ret = fn();
 
-    *event = true;
-    wake_up_interruptible(wq);
-
-    do_exit(0);
+    wake_calling_thread(args->sync);
     return 0;
 }
 
 int thread_initfunc(initcall_t fn) {
     void * data;
     struct initcall_args args;
-    DECLARE_WAIT_QUEUE_HEAD(wq);
-    int event = false;
+    struct sync_args sync;
 
     args.fn = fn;
-    args.wq = &wq;
-    args.event = &event;
-
-    /* problem: those arguments are on the stack, and we want to close it domain
-     * when going to this other thread...
-     * public domain dynamic alloc ?
-     * -> YES, this should be in a public domain so it's fine.
-     */
+    args.sync = &sync;
     data = (void*) &args;
-    kthread_run(call_initfunc, data, "call_initfunc");
 
-    wait_event_interruptible(wq, event != 0);
+    thread_and_sync(call_initfunc, data, "call_initfunc", &sync);
 
-    // Should check if data is right type.
     return args.ret;
 }
 
 /************ exitcall wrapper ************/
+struct exitcall_args {
+    void (*fn) (void);
+    struct sync_args *sync;
+};
+
+int call_exitfunc(void *data) {
+    struct exitcall_args *args;
+    void (*fn) (void);
+
+    args = (struct exitcall_args*) data;
+    fn = args->fn,
+    fn();
+    
+    wake_calling_thread(args->sync);
+    return 0;
+}
+
+void thread_exitfunc(void (*fn) (void)) {
+    void * data;
+    struct exitcall_args args;
+    struct sync_args sync;
+
+    args.fn = fn;
+    args.sync = &sync;
+    data = (void*) &args;
+
+    thread_and_sync(call_exitfunc, data, "call_exitfunc", &sync);
+}
 
 // also needs kthread, semaphore and wait queues
 // as initcall needs.
-void call_exitfunc(void (*fn) (void)) {
-    printk("drivers/public_domain/wrapper.c: Just calling the exit "
-        "function.\n");
-    fn();
-}
+//void call_exitfunc(void (*fn) (void)) {
+//    printk("drivers/public_domain/wrapper.c: Just calling the exit "
+//        "function.\n");
+//    fn();
+//}
 
 /****************** some symbol wrappers ******************/
 
@@ -111,7 +152,7 @@ extern void register_wrapper_initcall(void * ptr);
 extern void register_wrapper_exitcall(void * ptr);
 void register_wrappers(void) {
     register_wrapper_initcall(thread_initfunc);
-    register_wrapper_exitcall(call_exitfunc);
+    register_wrapper_exitcall(thread_exitfunc);
 }
 
 static int wrapper_init(void) {
