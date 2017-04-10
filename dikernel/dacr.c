@@ -18,7 +18,7 @@ size_t compute_DACR(size_t domain, size_t type, struct thread_info *info) {
     return new_dacr;
 }
 
-void write_DACR(size_t domain, size_t type) {
+void write_cpu_domain(size_t domain, size_t type) {
     size_t new_dacr;
     struct thread_info *info;
     if(domain > 15 || type > DOMAIN_MANAGER)

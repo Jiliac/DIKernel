@@ -2845,7 +2845,11 @@ static int move_module(struct module *mod, struct load_info *info)
 	} else
 		mod->module_init = NULL;
 
+#ifdef CONFIG_CPU_USE_DOMAINS
+    // initialize with incompatible domain id
+    mod->mod_domain = -1;
     module_change_domain(mod);
+#endif
 
 	/* Transfer each section which specifies SHF_ALLOC */
 	pr_debug("final section addresses:\n");
@@ -3055,9 +3059,7 @@ static void do_free_init(struct rcu_head *head)
 	struct mod_initfree *m = container_of(head, struct mod_initfree, rcu);
 	module_memfree(m->module_init);
 	kfree(m);
-}
-
-/*
+} /*
  * This is where the real work happens.
  *
  * Keep it uninlined to provide a reliable breakpoint target, e.g. for the gdb
@@ -3084,7 +3086,7 @@ static noinline int do_init_module(struct module *mod)
 	do_mod_ctors(mod);
 	/* Start the module */
 	if (mod->init != NULL)
-		ret = do_one_initcall(mod->init);
+		ret = do_one_initcall(mod->init, mod->mod_domain);
 	if (ret < 0) {
 		goto fail_free_freeinit;
 	}

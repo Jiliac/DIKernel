@@ -4,7 +4,7 @@
 #include <linux/kmod.h>     // for request_module
 #include <linux/dik/set_wrap.h> // for call_switcher_to_mod
 #include <linux/dik/stack.h>    // for read_sp
-#include "dacr.h"           // for read and write dacr
+#include <linux/dik/dacr.h>           // for read and write dacr
 #include "table_walk.h"     // for read_ttbr
 
 #define VMALLOC_SIZE   1000000 
@@ -43,10 +43,10 @@ void kthread_run_test(void) {
 asmlinkage long sys_dikcall(void) {
     print_sp();
     read_DACR();
-    write_DACR(4, 1);
+    write_cpu_domain(4, 1);
     read_DACR();
 
-    kthread_run_test();
+    //kthread_run_test();
 
     return 0;
 }

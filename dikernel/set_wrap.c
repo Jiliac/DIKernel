@@ -2,25 +2,24 @@
 #include "syms_modif.h"
 
 /****************** initcall wrapper setup ************/
-
-int (*wrapper_initcall) (initcall_t fn) = 0;
+int (*wrapper_initcall) (initcall_t fn, size_t domain) = NULL;
 void register_wrapper_initcall(void * ptr) {
     printk("dikernel/set_wrap.c: register_wrapper_initcall called.\n");
     wrapper_initcall = ptr;
 }
 EXPORT_SYMBOL(register_wrapper_initcall);
 
-int call_wrapper_initcall(initcall_t fn) {
+int call_wrapper_initcall(initcall_t fn, size_t domain) {
+    int ret;
     if(!wrapper_initcall) {
         return fn();
     }
-    else {
-        return wrapper_initcall(fn);
-    }
+    ret = wrapper_initcall(fn, domain);
+    return ret;
 }
 
 /****************** exitcall wrapper setup ************/
-void (*wrapper_exitcall) (void (*fn) (void)) = 0;
+void (*wrapper_exitcall) (void (*fn) (void), size_t domain) = NULL;
 void register_wrapper_exitcall(void * ptr) {
     printk("dikernel/set_wrap.c: register_wrapper_exitcall called.\n");
     wrapper_exitcall = ptr;
@@ -28,17 +27,16 @@ void register_wrapper_exitcall(void * ptr) {
 EXPORT_SYMBOL(register_wrapper_exitcall);
 
 void call_wrapper_exitcall(void (*fn) (void)) {
+    // DOMAIN PASSING TO BE PASSED HERE AS WELL !!!!!!
     if(!wrapper_exitcall) {
         fn();
     }
-    else
-        wrapper_exitcall(fn);
+    wrapper_exitcall(fn, 0);
 }
-
 
 /****************** switch to mod setup ***************/
 
-void (*switcher_to_mod) (void) = 0;
+void (*switcher_to_mod) (void) = NULL;
 void register_switcher_to_mod(void * ptr) {
     printk("dikernel/set_wrap.c: register_switcher_to_mod called.\n");
     switcher_to_mod = ptr;
@@ -74,9 +72,10 @@ void modify_sym_in_mod(char * mod_name, char * target_name, char * sym_to_change
         printk("Didn't find '%s' among already loaded modules.\n", mod_name);
 }
 
-#define WRAPPER_MODULE  "wrapper"
+int wrapper_set = 0;    // boolean value
 void setting_wrappers() {
     printk("!!!!!!!!!! setting_wrappers start !!!!!!!!!!\n");
+    wrapper_set = 1;    // WRAPPER_MODULE should be in DOMAIN_PUBLIC
     if(!request_module(WRAPPER_MODULE)) {
         printk("setting_wrapper: %s module loaded.\n", WRAPPER_MODULE);
         modify_sym_in_mod(WRAPPER_MODULE, "__kmalloc", "wrapper___kmalloc");
@@ -85,4 +84,8 @@ void setting_wrappers() {
     } else
         printk("Couldn't load %s module.\n", WRAPPER_MODULE);
     printk("!!!!!!!!!! setting_wrappers end !!!!!!!!!!\n");
+}
+
+int get_wrapper_set(void) {
+    return wrapper_set;
 }

@@ -3,7 +3,7 @@
 #include <asm/proc-fns.h>   // cpu_get_ttbr or pgd macros
 #include <linux/sched.h>    // for init_mm
 #include "table_walk.h"
-#include "dacr.h"
+#include <linux/dik/dacr.h>
 
 // Different available types of page table
 char * pt_type[] = {"Fault", "Page Table Base", "Section", "Reserved"};
@@ -43,7 +43,7 @@ pgd_t* get_section_base_addr(unsigned long addr) {
     return section_base_addr;
 }
 
-void modify_section_domain_id(unsigned long addr, unsigned int id) {
+void modify_section_domain_id(unsigned long addr, size_t id) {
     pgd_t * section_base_addr;
     unsigned int section_base;
 
@@ -51,7 +51,6 @@ void modify_section_domain_id(unsigned long addr, unsigned int id) {
         printk("Domain ID should be between 0 and 15.\n");
 
     section_base_addr = get_section_base_addr(addr);
-    //section_base = (unsigned int) *section_base_addr;
     section_base = *((unsigned int*) section_base_addr);
     printk("Current domain of 0x%8x section is %i.\n", section_base,
         get_domain_id(section_base));
@@ -63,7 +62,7 @@ void modify_section_domain_id(unsigned long addr, unsigned int id) {
  *********************** If allocated with vmalloc ***************************
  ****************** i.e. with "normal" page table adressing ******************
  ****************************************************************************/
-void walk_pmd(pud_t *pud, unsigned long addr, unsigned long end, unsigned int id){
+void walk_pmd(pud_t *pud, unsigned long addr, unsigned long end, size_t id){
     pmd_t *pmd;
     unsigned long next;
     pmd = pmd_offset(pud, addr);
@@ -79,7 +78,7 @@ void walk_pmd(pud_t *pud, unsigned long addr, unsigned long end, unsigned int id
     isb();
 }
 
-void walk_pud(pgd_t *pgd, unsigned long addr, unsigned long end, unsigned int id){
+void walk_pud(pgd_t *pgd, unsigned long addr, unsigned long end, size_t id){
     pud_t *pud;
     unsigned long next;
     pud = pud_offset(pgd, addr);
@@ -91,7 +90,7 @@ void walk_pud(pgd_t *pgd, unsigned long addr, unsigned long end, unsigned int id
     } while(pud++, addr = next, addr != end);
 }
 
-void modify_domain_id_coarsepg(long unsigned int addr, unsigned int id) {
+void modify_domain_id_coarsepg(long unsigned int addr, size_t id) {
     pgd_t *pgd;
     struct vmap_area *va;
     unsigned long end;
