@@ -5,15 +5,24 @@
 #include "table_walk.h"
 #include <linux/dik/dacr.h>
 
-// Different available types of page table
-char * pt_type[] = {"Fault", "Page Table Base", "Section", "Reserved"};
+/**************************************************************************/
+void dump(void) {
+    pgd_t * pgd;
+    pmd_t *pmd;
+    int i;
+
+    pgd = init_mm.pgd;
+    for (i = 0; i < PTRS_PER_PGD; i++, pgd++) {
+        pmd = pmd_offset(pud_offset(pgd, 0), 0);
+        if(pmd[0] != 0 && pmd[1] != 0)
+            printk("pgd[%i]: pmd[0]: 0x%x, pmd[1]: 0x%x.\n", i, pmd[0], pmd[1]);
+    }
+}
+/**************************************************************************/
 
 void read_ttbr(void) {
     unsigned int ttbr0, ttbr1;
     int miscellanious;
-    // I believe for previous ARM version
-    //asm volatile("MRC p15, 0, %0, c2, c0, 0" : "=r" (ttbr) : ); // ttbr0
-    //asm volatile("MRC p15, 0, %0, c2, c0, 1" : "=r" (ttbr) : ); // ttbr1
     asm volatile("MRRC p15, 0, %0, %1, c2" : "=r" (ttbr0), "=r" (miscellanious) : );
     printk("ttbr0: %8x.\n", ttbr0);
     asm volatile("MRRC p15, 1, %0, %1, c2" : "=r" (ttbr1), "=r" (miscellanious) : );
@@ -39,7 +48,8 @@ pgd_t* get_section_base_addr(unsigned long addr) {
     
     pgd = init_mm.pgd;
     section_base_addr = pgd + (addr >> PGDIR_SHIFT);
-    printk("section base: 0x%8x.\n", *((unsigned int*) section_base_addr));
+    //printk("get_section_base_addr: addr: 0x%lx, pgd %p, section_base_addr %p.\n",
+    //    addr, pgd, section_base_addr);
     return section_base_addr;
 }
 
@@ -52,9 +62,10 @@ void modify_section_domain_id(unsigned long addr, size_t id) {
 
     section_base_addr = get_section_base_addr(addr);
     section_base = *((unsigned int*) section_base_addr);
-    printk("Current domain of 0x%8x section is %i.\n", section_base,
-        get_domain_id(section_base));
+    //printk("Current domain of 0x%8x section is %i.\n", section_base,
+    //    get_domain_id(section_base));
     modify_domain_id((unsigned int*) section_base_addr, id);
+    modify_domain_id((unsigned int*) section_base_addr + 1, id);
 }
 
 /*****************************************************************************
@@ -74,6 +85,7 @@ void walk_pmd(pud_t *pud, unsigned long addr, unsigned long end, size_t id){
         printk("dikernel/table_walk: pmd address %p - pmd value %x\n",
             pmd, *pmd);
         modify_domain_id((unsigned int*) pmd, id);
+        modify_domain_id((unsigned int*) pmd + 1, id);
     } while(pmd++, addr = next, addr != end);
     isb();
 }

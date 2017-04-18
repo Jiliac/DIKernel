@@ -7,7 +7,6 @@
 #include <linux/dik/dacr.h>           // for read and write dacr
 #include "table_walk.h"     // for read_ttbr
 
-#define VMALLOC_SIZE   1000000 
 #define BUF_SIZE       1000000 
 
 /***************** Kernel Thread Test *****************/
@@ -40,13 +39,15 @@ void kthread_run_test(void) {
 }
 
 /******************** System Call *********************/
+#include <asm/domain.h>     // just reading different domain values
+#define MALLOC_SIZE   1 << 21 
 asmlinkage long sys_dikcall(void) {
     print_sp();
     read_DACR();
     write_cpu_domain(4, 1);
     read_DACR();
 
-    //kthread_run_test();
+    dump();
 
     return 0;
 }

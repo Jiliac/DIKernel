@@ -11,12 +11,9 @@ static size_t free_domains = (1 << DOMAIN_KERNEL) | (1 << DOMAIN_TABLE) |
 size_t get_free_domain(void) {
     int i;
     int dom_availability;
-    printk("free_domains 0x%x.\n", free_domains);
     for(i = 4; i < 16; ++i) {
         dom_availability = (free_domains >> i) & 1;
-        printk("i=%i da=%i - ", i, dom_availability);
         if(!dom_availability) {
-            printk("\n");
             free_domains |= 1 << i;
             return i;
         }

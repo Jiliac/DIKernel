@@ -1,5 +1,5 @@
 #include <linux/module.h>
-#include<linux/slab.h>
+#include <linux/slab.h>
 #include <linux/kthread.h>   // for kthreads
 #include <linux/wait.h>
 
@@ -16,24 +16,19 @@ MODULE_LICENSE("GPL");
 #include <asm/thread_info.h>    // for the macros (current_thread_info)
 
 /******* Debug Function *********/
-//#define read_pc(pc) asm volatile("mov %0, r15" : "=r" (pc) :)
-
-static void walk_registers(void) {
-    size_t reg;
-
-    /*** for programm counter ***/
-    //read_pc(pc);
-    asm volatile("mov %0, r15" : "=r" (reg) :);
-    printk("Current program counter: 0x%8x.\n", reg);
-    change_stack_back(20, reg);  // first arg is just random value above
-                                // 16 for debug mode
-
-    /*** for stack pointer ***/
-    asm volatile("mov %0, r13" : "=r" (reg) :);
-    printk("Current stack pointer: 0x%8x.\n", reg);
-    change_stack_back(20, reg);
-}
-
+#define walk_registers()                                        \
+    do {                                                        \
+        size_t reg;                                             \
+        /*** for programm counter ***/                          \
+        asm volatile("mov %0, r15" : "=r" (reg) :);             \
+        printk("Current Program Counter (PC): 0x%8x.\n", reg);  \
+        change_stack_back(20, reg);                             \
+                                                                \
+        /*** for stack pointer ***/                             \
+        asm volatile("mov %0, r13" : "=r" (reg) :);             \
+        printk("Current Stack Pointer (SP): 0x%8x.\n", reg);    \
+        change_stack_back(20, reg);                             \
+    } while(0)
 /********************************/
 
 struct sync_args {
@@ -50,13 +45,16 @@ static void switch_dacr_to_module(struct sync_args *sync) {
      */
     size_t new_dacr;
     struct thread_info *info = current_thread_info();
-    new_dacr = domain_val(sync->domain, DOMAIN_MANAGER) |
-            domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
-            //domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) |
-            domain_val(DOMAIN_IO, DOMAIN_CLIENT) |
-            domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER);
-    printk("New DACR value to be set: 0x%x. Domain id: %i\n", new_dacr, sync->domain);
     read_dacr(sync->old_dacr);
+    //new_dacr = domain_val(sync->domain, DOMAIN_MANAGER) |
+    //        domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
+    //        //domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) |
+    //        domain_val(DOMAIN_IO, DOMAIN_CLIENT) |
+    //        domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER);
+    new_dacr = (sync->old_dacr & (~domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER)))
+            | domain_val(DOMAIN_KERNEL, DOMAIN_NOACCESS);    // just closing
+                                                            // kernel...
+    printk("New DACR value to be set: 0x%x. Domain id: %i\n", new_dacr, sync->domain);
     info->cpu_domain = new_dacr;
 
     /*******************************
@@ -68,6 +66,7 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     *******************************/
     walk_registers();
     //local_flush_tlb_all();    // Probably useless but just to be sure.
+
     write_dacr(sync->old_dacr);
     printk("Bug point? 3\n");
 
@@ -85,7 +84,6 @@ static void switch_dacr_to_module(struct sync_args *sync) {
 
 void wake_calling_thread(struct sync_args *sync) {
     printk("In call_initfunc thread. ");
-    read_current_task_ids();
     print_sp();
 
     /* Really needed? Or the kernel will do it by himself when changing thread.
@@ -109,23 +107,15 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
     sync->wq = &wq;
     sync->event = &event;
     sync->domain = domain;
-    read_current_task_ids();
-    read_current_thread_cpu_domain();
 
     task = kthread_create(threadfn, data, namefmt);
     
-    printk("In module wrapper: ");
-    read_thread_cpu_domain(task);
-
     /* 
      * Changing stack domain ID
      * & Enforce this change by TLB flush??? if we do that all the time it's
      * VERY long!
      */
     stack = set_task_stack_domain_id(domain, task);
-
-    printk("In module wrapper, after modif: ");
-    read_thread_cpu_domain(task);
 
     wake_up_process(task);
 

@@ -19,7 +19,7 @@ void change_stack_back(size_t domain_id, unsigned long stack) {
         printk("change_stack back, domain_id above 16, page table walking "
             "mode.\n");
         section_base_addr = get_section_base_addr(stack);
-        section_base = *((unsigned int*) section_base_addr);
+        section_base = *((unsigned int*) section_base_addr+1);
         printk("Current domain of 0x%8x section is %i.\n", section_base,
             get_domain_id(section_base));
     }
