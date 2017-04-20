@@ -1,5 +1,5 @@
 // This is for debug. Likely to be removed later
-extern void change_stack_back(size_t domain_id, unsigned long stack);
+extern void change_stack_back(size_t domain_id, unsigned int stack);
 
 extern unsigned long set_task_stack_domain_id(size_t domain_id, struct task_struct *task);
 extern void set_task_DACR(size_t new_dacr, struct task_struct *task);

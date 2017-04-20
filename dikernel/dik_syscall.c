@@ -42,11 +42,6 @@ void kthread_run_test(void) {
 #include <asm/domain.h>     // just reading different domain values
 #define MALLOC_SIZE   1 << 21 
 asmlinkage long sys_dikcall(void) {
-    print_sp();
-    read_DACR();
-    write_cpu_domain(4, 1);
-    read_DACR();
-
     dump();
 
     return 0;

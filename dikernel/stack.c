@@ -8,7 +8,7 @@
 void change_stack_domain_id(unsigned int new_id) {
     size_t sp;
     read_sp(sp);
-    modify_section_domain_id((unsigned long) sp, new_id);
+    change_domain_id(sp, new_id);
 }
 
 /****************** just for test *****************/

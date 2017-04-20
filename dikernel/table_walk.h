@@ -4,9 +4,9 @@
 #include <asm/pgtable.h>
 #include <asm/pgtable-2level.h> // pgd_t type
 void dump(void);
-void modify_domain_id_coarsepg(long unsigned int addr, size_t id);
+void change_all_ids(unsigned int id);
 void read_ttbr(void);
-pgd_t* get_section_base_addr(unsigned long addr);
-void modify_section_domain_id(unsigned long addr, size_t id);
+void change_domain_id(unsigned int addr, size_t domain_id);
+unsigned int* get_first_lvl(int addr);
 
 #endif

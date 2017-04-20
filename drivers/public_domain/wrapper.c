@@ -38,6 +38,7 @@ struct sync_args {
 };
 
 #include <asm/tlbflush.h>       // not sure needed to vlush here. For test
+extern void change_all_ids(unsigned int id);
 static void switch_dacr_to_module(struct sync_args *sync) {
     /*
      * Changing thread cpu_domain
@@ -55,7 +56,6 @@ static void switch_dacr_to_module(struct sync_args *sync) {
             | domain_val(DOMAIN_KERNEL, DOMAIN_NOACCESS);    // just closing
                                                             // kernel...
     printk("New DACR value to be set: 0x%x. Domain id: %i\n", new_dacr, sync->domain);
-    info->cpu_domain = new_dacr;
 
     /*******************************
     *** !!!NEED TO BE CAREFUL!!! ***
@@ -67,13 +67,16 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     walk_registers();
     //local_flush_tlb_all();    // Probably useless but just to be sure.
 
-    write_dacr(sync->old_dacr);
-    printk("Bug point? 3\n");
-
     /* This block is to check if problem comes immediately (caused by some
      * pointers in wrong domain right now) or is caused by some other
      * intervention like interrupt, exception or calling code in kernel. 
      */
+    //printk("going to change all domain ids\n");
+    //change_all_ids(sync->domain);
+    //printk("Done changing all domain ids.\n");
+    printk("Bug point? 3\n");
+
+    info->cpu_domain = new_dacr;
     write_dacr(new_dacr);
     write_dacr(sync->old_dacr);
     printk("Bug point? 4\n");
@@ -166,6 +169,8 @@ int call_initfunc(void * data) {
     struct initcall_args *args;
     initcall_t fn;
 
+    printk("*********** CALL_INITFUNC ***********\n");
+
     args = (struct initcall_args*) data;
     fn = args->fn;
 
@@ -181,6 +186,8 @@ int thread_initfunc(initcall_t fn, size_t domain) {
     void * data;
     struct initcall_args args;
     struct sync_args sync;
+
+    printk("********** THREAD_INITFUNC **********\n");
 
     args.fn = fn;
     args.sync = &sync;

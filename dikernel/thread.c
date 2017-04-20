@@ -2,24 +2,22 @@
 #include <linux/dik/thread.h>
 
 #include <linux/dik/dacr.h>           // for compute_DACR
-#include "table_walk.h"     // modify_section_domain_id
+#include "table_walk.h"     // change_domain_id
 #include <asm/tlbflush.h>
 #include <asm/page.h>       // also for flush
 
 // This is for debug. Likely to be removed later
-void change_stack_back(size_t domain_id, unsigned long stack) {
+void change_stack_back(size_t domain_id, unsigned int stack) {
     if(domain_id < 16) {
-    modify_section_domain_id(stack, domain_id);
+    change_domain_id(stack, domain_id);
     flush_tlb_kernel_page(stack);
     flush_tlb_kernel_page(stack + PAGE_SIZE);
     } else {
         // alternative mode to walk page tables
-        pgd_t * section_base_addr;
+        unsigned int* section_base_addr;
         unsigned int section_base;
-        printk("change_stack back, domain_id above 16, page table walking "
-            "mode.\n");
-        section_base_addr = get_section_base_addr(stack);
-        section_base = *((unsigned int*) section_base_addr+1);
+        section_base_addr = get_first_lvl(stack);
+        section_base = *section_base_addr;
         printk("Current domain of 0x%8x section is %i.\n", section_base,
             get_domain_id(section_base));
     }
@@ -28,8 +26,8 @@ EXPORT_SYMBOL(change_stack_back);
 /***************** debug end *********************/
 
 unsigned long set_task_stack_domain_id(size_t domain_id, struct task_struct *task) {
-    unsigned long stack = (unsigned long) task->stack;
-    modify_section_domain_id(stack, domain_id);
+    unsigned int stack = (unsigned int) task->stack;
+    change_domain_id(stack, domain_id);
     flush_tlb_kernel_page(stack);
     flush_tlb_kernel_page(stack + PAGE_SIZE);
     return stack;

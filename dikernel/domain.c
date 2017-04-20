@@ -54,10 +54,8 @@ void module_change_domain(struct module *mod) {
         return;
 
     set_mod_domain(mod);
-    modify_domain_id_coarsepg((unsigned long int) mod->module_core,
-            mod->mod_domain);
+    change_domain_id((unsigned int) mod->module_core, mod->mod_domain);
     if(mod->module_init) {
-        modify_domain_id_coarsepg((unsigned long int) mod->module_init,
-                mod->mod_domain);
+        change_domain_id((unsigned int) mod->module_init, mod->mod_domain);
     }
 }
