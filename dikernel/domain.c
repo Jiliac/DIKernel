@@ -6,7 +6,8 @@
 /* DOMAIN_KERNEL and DOMAIN_CLIENT reserved for system
  */
 static size_t free_domains = (1 << DOMAIN_KERNEL) | (1 << DOMAIN_TABLE) |
-    (1 << DOMAIN_USER) | (1 << DOMAIN_IO) | (1 << DOMAIN_PUBLIC);
+    (1 << DOMAIN_USER) | (1 << DOMAIN_IO) | (1 << DOMAIN_PUBLIC) |
+    (1 << DOMAIN_KERNEL_VIRTUAL);
 
 size_t get_free_domain(void) {
     int i;

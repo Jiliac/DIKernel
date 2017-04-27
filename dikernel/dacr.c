@@ -35,12 +35,13 @@ void write_cpu_domain(size_t domain, size_t type) {
 
 /********** Domain ID in page tables *************/
 
-unsigned int get_domain_id(unsigned int pmd) {
-    return (pmd >> 5) & 0xf;
-}
-
 #define DOMAIN_ID_POS   5
 #define DOMAIN_ID_MASK  ~(0xf << DOMAIN_ID_POS)
+
+unsigned int get_domain_id(unsigned int pmd) {
+    return (pmd >> DOMAIN_ID_POS) & 0xf;
+}
+
 void set_domain_id(pmd_t * pmd_p, unsigned int id) {
     if(id < 16)
         *pmd_p = ((*pmd_p) & DOMAIN_ID_MASK) | (id << DOMAIN_ID_POS);

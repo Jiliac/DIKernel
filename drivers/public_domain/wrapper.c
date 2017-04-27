@@ -38,7 +38,9 @@ struct sync_args {
 };
 
 #include <asm/tlbflush.h>       // not sure needed to vlush here. For test
+//#include "fix_dacr_change.h"
 extern void change_all_ids(unsigned int id);
+extern void change_kernel_domain(void);
 static void switch_dacr_to_module(struct sync_args *sync) {
     /*
      * Changing thread cpu_domain
@@ -47,13 +49,15 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     size_t new_dacr;
     struct thread_info *info = current_thread_info();
     read_dacr(sync->old_dacr);
-    //new_dacr = domain_val(sync->domain, DOMAIN_MANAGER) |
-    //        domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
-    //        //domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) |
-    //        domain_val(DOMAIN_IO, DOMAIN_CLIENT) |
-    //        domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER);
-    new_dacr = (sync->old_dacr & (~domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER)))
-            | domain_val(DOMAIN_KERNEL, DOMAIN_NOACCESS);    // just closing
+    new_dacr = domain_val(sync->domain, DOMAIN_MANAGER) |
+            domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
+            domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) |  /* virtual kernel
+                                                          * must be closed.*/
+            domain_val(DOMAIN_IO, DOMAIN_CLIENT) |
+            domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER);
+
+    //new_dacr = (sync->old_dacr & (~domain_val(DOMAIN_KERNEL_VIRTUAL, DOMAIN_MANAGER)))
+    //        | domain_val(DOMAIN_KERNEL, DOMAIN_NOACCESS);    // just closing
                                                             // kernel...
     printk("New DACR value to be set: 0x%x. Domain id: %i\n", new_dacr, sync->domain);
 
@@ -65,24 +69,20 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     *(Pointer with fix DACR values)*
     *******************************/
     walk_registers();
-    //local_flush_tlb_all();    // Probably useless but just to be sure.
 
-    /* This block is to check if problem comes immediately (caused by some
-     * pointers in wrong domain right now) or is caused by some other
-     * intervention like interrupt, exception or calling code in kernel. 
-     */
-    //printk("going to change all domain ids\n");
-    //change_all_ids(sync->domain);
-    //printk("Done changing all domain ids.\n");
-    printk("Bug point? 3\n");
+    printk("Changing kernel domain id.\n");
+    change_kernel_domain();
+    local_flush_tlb_all();
+    printk("Done changing domain ids.\n");
 
     info->cpu_domain = new_dacr;
-    write_dacr(new_dacr);
-    write_dacr(sync->old_dacr);
-    printk("Bug point? 4\n");
 
     write_dacr(new_dacr);
-    printk("Bug point? 5\n");
+    printk("Bug point.\n");
+
+    // Why calling printk doesn't trigger bug?
+    printk("printk addr: %p\n", printk);
+    change_stack_back(20, (unsigned int) printk);
 }
 
 void wake_calling_thread(struct sync_args *sync) {
