@@ -5,6 +5,7 @@
 #include <linux/dik/set_wrap.h> // for call_switcher_to_mod
 #include <linux/dik/stack.h>    // for read_sp
 #include <linux/dik/dacr.h>           // for read and write dacr
+#include <linux/dik/myprint.h>
 #include "table_walk.h"     // for read_ttbr
 
 #define BUF_SIZE       1000000 
@@ -16,10 +17,10 @@
 #include <linux/delay.h>        // for sleep
 int foo_kthread(void * data) {
     char * str = (char*) data;
-    printk("foo_kthread: I hope this data was really a string: %s.\n", 
+    dbg_pr("foo_kthread: I hope this data was really a string: %s.\n", 
         str);
 
-    printk("read_DACR in thread: ");
+    dbg_pr("read_DACR in thread: ");
     read_DACR();
 
     do_exit(0);
@@ -39,9 +40,21 @@ void kthread_run_test(void) {
 }
 
 /******************** System Call *********************/
-#include <asm/domain.h>     // just reading different domain values
-#define MALLOC_SIZE   1 << 21 
+#include <asm/domain.h>
+#include <linux/dik/dacr.h>     // write_dacr and read_dacr macros
 asmlinkage long sys_dikcall(void) {
+    size_t old_dacr, new_dacr;
+
+#ifdef CONFIG_DIK_EVA
+    dbg_pr("dik_eva: %d\n", CONFIG_DIK_EVA);
+#endif
+
+    read_dacr(old_dacr);
+    new_dacr = (old_dacr & (~domain_val(DOMAIN_USER, DOMAIN_MANAGER)))
+        | domain_val(DOMAIN_USER, DOMAIN_NOACCESS);
+    dbg_pr("old dacr: 0x%x, new_dacr: 0x%x.\n", old_dacr, new_dacr);
+    write_dacr(new_dacr);
+
     dump();
 
     return 0;

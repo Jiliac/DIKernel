@@ -6,14 +6,14 @@ MODULE_LICENSE("GPL");
 /* Should be called from kernel */
 
 void switch_to_basekernel(void) {
-    printk("Switching from module to base kernel.\n");
+    pr_debug("Switching from module to base kernel.\n");
 }
 EXPORT_SYMBOL(switch_to_basekernel);
 
 /****************** switch from mod to kernel *************/
 
 void switch_to_module(void) {
-    printk("Switching from base kernel to module.\n");
+    pr_debug("Switching from base kernel to module.\n");
 }
 EXPORT_SYMBOL(switch_to_module);
 
@@ -25,14 +25,14 @@ void register_switcher(void) {
 /********** registering our function in base kernel *******/
 
 static int public_init(void) {
-    printk("domain_switcher module_init registering switch_to_module "
+    pr_debug("domain_switcher module_init registering switch_to_module "
         "function.\n");
     register_switcher();
     return 0;
 }
 
 static void public_exit(void) {
-    printk("domain_switcher module_exit also has nothing to do.\n");
+    pr_debug("domain_switcher module_exit also has nothing to do.\n");
 }
 
 module_init(public_init);

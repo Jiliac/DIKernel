@@ -2,6 +2,7 @@
 #include "table_walk.h"
 #include <linux/dik/dacr.h>
 #include <linux/dik/domain.h>
+#include <linux/dik/myprint.h>
 
 /**************************************************************************/
 void dump(void) {
@@ -13,7 +14,7 @@ void dump(void) {
     for (i = 0; i < PTRS_PER_PGD; i++, pgd++) {
         pmd = pmd_offset(pud_offset(pgd, 0), 0);
         if(pmd[0] != 0 || pmd[1] != 0)
-            printk("pgd[%i]=%p: pmd[0]: 0x%x, pmd[1]: 0x%x.\n",
+            dbg_pr("pgd[%i]=%p: pmd[0]: 0x%x, pmd[1]: 0x%x.\n",
                     i, pgd, pmd[0], pmd[1]);
     }
 }
@@ -45,7 +46,7 @@ void change_all_ids(unsigned int id) {
     int i;
 
     if(id > 15)
-        printk("Domain ID should be between 0 and 15.\n");
+        dbg_pr("Domain ID should be between 0 and 15.\n");
 
     pgd = init_mm.pgd;
     for (i = 0; i < PTRS_PER_PGD; i++, pgd++) {
@@ -64,18 +65,11 @@ void read_ttbr(void) {
     unsigned int ttbr0, ttbr1;
     int miscellanious;
     asm volatile("MRRC p15, 0, %0, %1, c2" : "=r" (ttbr0), "=r" (miscellanious) : );
-    printk("ttbr0: %8x.\n", ttbr0);
+    dbg_pr("ttbr0: %8x.\n", ttbr0);
     asm volatile("MRRC p15, 1, %0, %1, c2" : "=r" (ttbr1), "=r" (miscellanious) : );
-    printk("ttbr1: %8x.\n", ttbr1);
+    dbg_pr("ttbr1: %8x.\n", ttbr1);
 
     return;
-}
-
-unsigned int get_ttbr0(void) {
-    unsigned int ttbr0;
-    int miscellanious;
-    asm volatile("MRRC p15, 0, %0, %1, c2" : "=r" (ttbr0), "=r" (miscellanious) : );
-    return ttbr0;
 }
 
 /**************************** Miscellanious *********************************/
@@ -91,7 +85,7 @@ unsigned int* get_first_lvl(unsigned int addr) {
 
     pgd = (unsigned int*) (init_mm.pgd);
     first_lvl_descriptor_addr = pgd + ((addr & 0xfff00000) >> FIRST_LVL_SHIFT);
-    printk("addr: 0x%x, pgd: %p, first_lvl_descriptor_addr: %p.\n",
+    dbg_pr("addr: 0x%x, pgd: %p, first_lvl_descriptor_addr: %p.\n",
             addr, pgd, first_lvl_descriptor_addr);
     return first_lvl_descriptor_addr;
 }

@@ -253,6 +253,7 @@ static int ____call_usermodehelper(void *data)
 
 	commit_creds(new);
 
+    pr_debug("kernel/kmod.c: ___call_usermodehelper calls do_execve.\n");
 	retval = do_execve(getname_kernel(sub_info->path),
 			   (const char __user *const __user *)sub_info->argv,
 			   (const char __user *const __user *)sub_info->envp);
@@ -538,7 +539,7 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
 {
 	DECLARE_COMPLETION_ONSTACK(done);
 	int retval = 0;
-    printk("Call_usermodehelper_exec function.\n");
+    pr_debug("kernel/kmod.c: call_usermodehelper_exec called.\n");
 
 	if (!sub_info->path) {
 		call_usermodehelper_freeinfo(sub_info);
@@ -601,7 +602,7 @@ int call_usermodehelper(char *path, char **argv, char **envp, int wait)
 	struct subprocess_info *info;
 	gfp_t gfp_mask = (wait == UMH_NO_WAIT) ? GFP_ATOMIC : GFP_KERNEL;
     // @TODO DELETE
-    printk("Calling a kernel module with call_usermodehelper.\n");
+    pr_debug("Calling a kernel module with call_usermodehelper.\n");
 
 	info = call_usermodehelper_setup(path, argv, envp, gfp_mask,
 					 NULL, NULL, NULL);

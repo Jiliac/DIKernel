@@ -847,7 +847,7 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
 
 	mutex_unlock(&module_mutex);
 	/* Final destruction now no one is using it. */
-    printk("kernel/module.c: about to call mod->exit if it exits.\n");
+    pr_debug("kernel/module.c: about to call mod->exit if it exits.\n");
 	if (mod->exit != NULL)
         call_wrapper_exitcall(mod->exit);
 	blocking_notifier_call_chain(&module_notify_list,
@@ -2389,7 +2389,7 @@ static void dynamic_debug_remove(struct _ddebug *debug)
 
 void * __weak module_alloc(unsigned long size)
 {
-    printk("vmalloc_exec called by module_alloc.\n");
+    pr_debug("vmalloc_exec called by module_alloc.\n");
 	return vmalloc_exec(size);
 }
 
@@ -2973,6 +2973,9 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 	layout_sections(mod, info);
 	layout_symtab(mod, info);
 
+#ifdef CONFIG_DIK_EVA
+    printk("insert module %s\n", mod->name);
+#endif
 	/* Allocate and move to the final place */
 	err = move_module(mod, info);
 	if (err)
@@ -3085,8 +3088,15 @@ static noinline int do_init_module(struct module *mod)
 
 	do_mod_ctors(mod);
 	/* Start the module */
-	if (mod->init != NULL)
+	if (mod->init != NULL){
+#ifdef CONFIG_DIK_EVA
+        printk("module insertion finished %s\n", mod->name);
+#endif
 		ret = do_one_initcall(mod->init, mod->mod_domain);
+#ifdef CONFIG_DIK_EVA
+        printk("do_one_initcall done %s\n", mod->name);
+#endif
+    }
 	if (ret < 0) {
 		goto fail_free_freeinit;
 	}

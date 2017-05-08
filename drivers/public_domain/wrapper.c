@@ -1,7 +1,8 @@
 #include <linux/module.h>
 #include <linux/slab.h>
-#include <linux/kthread.h>   // for kthreads
+#include <linux/kthread.h>  // for kthreads
 #include <linux/wait.h>
+#include <linux/dik/myprint.h>
 
 MODULE_LICENSE("GPL");
 
@@ -19,14 +20,14 @@ MODULE_LICENSE("GPL");
 #define walk_registers()                                        \
     do {                                                        \
         size_t reg;                                             \
-        /*** for programm counter ***/                          \
-        asm volatile("mov %0, r15" : "=r" (reg) :);             \
-        printk("Current Program Counter (PC): 0x%8x.\n", reg);  \
-        change_stack_back(20, reg);                             \
-                                                                \
         /*** for stack pointer ***/                             \
         asm volatile("mov %0, r13" : "=r" (reg) :);             \
-        printk("Current Stack Pointer (SP): 0x%8x.\n", reg);    \
+        dbg_pr("Current Stack Pointer (SP): 0x%8x.\n", reg);    \
+        change_stack_back(20, reg);                             \
+                                                                \
+        /*** for programm counter ***/                          \
+        asm volatile("mov %0, r15" : "=r" (reg) :);             \
+        dbg_pr("Current Program Counter (PC): 0x%8x.\n", reg);  \
         change_stack_back(20, reg);                             \
     } while(0)
 /********************************/
@@ -38,6 +39,7 @@ struct sync_args {
 };
 
 #include <asm/tlbflush.h>       // not sure needed to vlush here. For test
+#include <asm/cacheflush.h>
 //#include "fix_dacr_change.h"
 extern void change_all_ids(unsigned int id);
 extern void change_kernel_domain(void);
@@ -59,7 +61,7 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     //new_dacr = (sync->old_dacr & (~domain_val(DOMAIN_KERNEL_VIRTUAL, DOMAIN_MANAGER)))
     //        | domain_val(DOMAIN_KERNEL, DOMAIN_NOACCESS);    // just closing
                                                             // kernel...
-    printk("New DACR value to be set: 0x%x. Domain id: %i\n", new_dacr, sync->domain);
+    dbg_pr("New DACR value to be set: 0x%x. Module domain id: %i\n", new_dacr, sync->domain);
 
     /*******************************
     *** !!!NEED TO BE CAREFUL!!! ***
@@ -70,23 +72,26 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     *******************************/
     walk_registers();
 
-    printk("Changing kernel domain id.\n");
-    change_kernel_domain();
-    local_flush_tlb_all();
-    printk("Done changing domain ids.\n");
+    //dbg_pr("Changing kernel domain id.\n");
+    //change_kernel_domain();
+    //asm volatile ("" ::: "memory"); /* barrier */
+    //local_flush_tlb_all();
+    //flush_cache_all();
+    //asm volatile ("" ::: "memory"); /* barrier */
+    //dbg_pr("Done changing domain ids.\n");
 
     info->cpu_domain = new_dacr;
 
+    dbg_pr("Writing DACR.\n");
     write_dacr(new_dacr);
-    printk("Bug point.\n");
 
     // Why calling printk doesn't trigger bug?
-    printk("printk addr: %p\n", printk);
-    change_stack_back(20, (unsigned int) printk);
+    //printk("printk addr: %p\n", printk);
+    //change_stack_back(20, (unsigned int) printk);
 }
 
 void wake_calling_thread(struct sync_args *sync) {
-    printk("In call_initfunc thread. ");
+    dbg_pr("In call_initfunc thread. ");
     print_sp();
 
     /* Really needed? Or the kernel will do it by himself when changing thread.
@@ -169,13 +174,16 @@ int call_initfunc(void * data) {
     struct initcall_args *args;
     initcall_t fn;
 
-    printk("*********** CALL_INITFUNC ***********\n");
+    dbg_pr("*********** CALL_INITFUNC ***********\n");
 
     args = (struct initcall_args*) data;
     fn = args->fn;
 
     switch_dacr_to_module(args->sync);
-    printk("Bug point? LAST\n");
+    //dbg_pr("Bug point? LAST\n");
+#ifdef CONFIG_DIK_EVA
+    printk("calling module\n");
+#endif
     args->ret = fn();
 
     wake_calling_thread(args->sync);
@@ -187,7 +195,7 @@ int thread_initfunc(initcall_t fn, size_t domain) {
     struct initcall_args args;
     struct sync_args sync;
 
-    printk("********** THREAD_INITFUNC **********\n");
+    dbg_pr("********** THREAD_INITFUNC **********\n");
 
     args.fn = fn;
     args.sync = &sync;
@@ -230,18 +238,38 @@ void thread_exitfunc(void (*fn) (void), size_t domain) {
     thread_and_sync(call_exitfunc, data, "call_exitfunc", &sync, domain);
 }
 
+/***************** factorizing wrapper code ***************/
+static size_t pre_call(void){
+    size_t old_dacr;
+    read_dacr(old_dacr);
+    write_dacr(KERNEL_DACR);
+    return old_dacr;
+}
+
+static void post_call(size_t old_dacr) {
+    write_dacr(old_dacr);
+}
+
 /****************** some symbol wrappers ******************/
 
 void * wrapper___kmalloc(size_t size, gfp_t gfp) {
-    printk("Calling __kmalloc, but through a wrapper.\n");
-    return __kmalloc(size, gfp);
+    void * ret;
+    size_t old_dacr;
+    old_dacr = pre_call();
+    dbg_pr("Calling __kmalloc, but through a wrapper.\n");
+    ret = __kmalloc(size, gfp);
+    post_call(old_dacr);
+    return ret;
 }
 EXPORT_SYMBOL(wrapper___kmalloc);
 
 extern void __aeabi_unwind_cpp_pr1(void);
 void wrapper___aeabi_unwind_cpp_pr1(void) {
-    printk("Calling __aeabi_unwind_cpp_pr1 through a wrapper.\n");
+    size_t old_dacr;
+    old_dacr = pre_call();
+    dbg_pr("Calling __aeabi_unwind_cpp_pr1 through a wrapper.\n");
     __aeabi_unwind_cpp_pr1();
+    post_call(old_dacr);
 }
 EXPORT_SYMBOL(wrapper___aeabi_unwind_cpp_pr1);
 
@@ -255,7 +283,7 @@ void register_wrappers(void) {
 }
 
 static int wrapper_init(void) {
-    printk("drivers/public_domain/wrapper.c: init - registering wrappers.\n");
+    dbg_pr("drivers/public_domain/wrapper.c: init - registering wrappers.\n");
     register_wrappers();
     return 0;
 }

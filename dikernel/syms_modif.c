@@ -1,6 +1,6 @@
-//#include <linux/kallsyms.h>
 #include <linux/elf.h>
 #include "syms_modif.h"
+#include <linux/dik/myprint.h>
 
 #define MODULE_SEARCH   "tuner_xc2028"
 #define SYM_SEARCH      "xc2028_set_config"
@@ -22,7 +22,7 @@ Elf_Sym * find_elf_sym(char * name, struct module * mod) {
     start = mod->core_symtab;
     for(i = 0; i < mod->num_symtab; i++) {
         sym_name = mod->strtab + start[i].st_name;
-        printk("dikernel/syms_modif.c: dumping elf nb %i - "
+        dbg_pr("dikernel/syms_modif.c: dumping elf nb %i - "
             "value: %x - name: %s.\n", i,
             start[i].st_value, sym_name);
         if(!strcmp(name, sym_name))
@@ -43,11 +43,11 @@ void modify_symbol(char * target_name, unsigned long new_value) {
     sym = (struct kernel_symbol*) find_symbol(target_name, NULL, NULL,
             true, true);
     if(sym){
-        printk("dikcmd/syms_modif.c: We found %s symbol!\n",
+        dbg_pr("dikcmd/syms_modif.c: We found %s symbol!\n",
                 target_name);
     }
     else{
-        printk("dikcmd/syms_modif.c: didn't find %s symbol.\n",
+        dbg_pr("dikcmd/syms_modif.c: didn't find %s symbol.\n",
                 target_name);
         return;
     }
