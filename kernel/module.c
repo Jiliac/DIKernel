@@ -849,7 +849,11 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
 	/* Final destruction now no one is using it. */
     pr_debug("kernel/module.c: about to call mod->exit if it exits.\n");
 	if (mod->exit != NULL)
+#ifdef CONFIG_DIK_USE
         call_wrapper_exitcall(mod->exit);
+#else
+        mod->exit();
+#endif
 	blocking_notifier_call_chain(&module_notify_list,
 				     MODULE_STATE_GOING, mod);
 	async_synchronize_full();

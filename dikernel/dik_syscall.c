@@ -45,10 +45,6 @@ void kthread_run_test(void) {
 asmlinkage long sys_dikcall(void) {
     size_t old_dacr, new_dacr;
 
-#ifdef CONFIG_DIK_EVA
-    dbg_pr("dik_eva: %d\n", CONFIG_DIK_EVA);
-#endif
-
     read_dacr(old_dacr);
     new_dacr = (old_dacr & (~domain_val(DOMAIN_USER, DOMAIN_MANAGER)))
         | domain_val(DOMAIN_USER, DOMAIN_NOACCESS);

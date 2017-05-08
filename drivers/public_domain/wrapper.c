@@ -181,9 +181,6 @@ int call_initfunc(void * data) {
 
     switch_dacr_to_module(args->sync);
     //dbg_pr("Bug point? LAST\n");
-#ifdef CONFIG_DIK_EVA
-    printk("calling module\n");
-#endif
     args->ret = fn();
 
     wake_calling_thread(args->sync);

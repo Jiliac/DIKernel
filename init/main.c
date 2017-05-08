@@ -767,7 +767,11 @@ static int __init_or_module do_one_initcall_debug(initcall_t fn, size_t domain)
 
 	printk(KERN_DEBUG "calling  %pF @ %i\n", fn, task_pid_nr(current));
 	calltime = ktime_get();
+#ifdef CONFIG_DIK_USE
 	ret = call_wrapper_initcall(fn, domain);
+#else
+    ret = fn();
+#endif
 	rettime = ktime_get();
 	delta = ktime_sub(rettime, calltime);
 	duration = (unsigned long long) ktime_to_ns(delta) >> 10;
@@ -789,7 +793,11 @@ int __init_or_module do_one_initcall(initcall_t fn, size_t domain)
 	if (initcall_debug)
 		ret = do_one_initcall_debug(fn, domain);
 	else
+#ifdef CONFIG_DIK_USE
         ret = call_wrapper_initcall(fn, domain);
+#else
+        ret = fn();
+#endif        
 
 	msgbuf[0] = 0;
 
@@ -1035,7 +1043,11 @@ static noinline void __init kernel_init_freeable(void)
 
 	integrity_load_keys();
 	load_default_modules();
+#ifdef CONFIG_DIK_USE
     if(!request_module("domain_switcher"))
         setting_wrappers();
-    print_sp();
+#endif
+#ifdef CONFIG_DIK_EVA
+    printk("Start evaluation\n");
+#endif
 }
