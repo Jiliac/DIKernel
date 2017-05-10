@@ -17,6 +17,7 @@ MODULE_LICENSE("GPL");
 #include <asm/thread_info.h>    // for the macros (current_thread_info)
 
 /******* Debug Function *********/
+#ifdef DEBUG
 #define walk_registers()                                        \
     do {                                                        \
         size_t reg;                                             \
@@ -30,7 +31,11 @@ MODULE_LICENSE("GPL");
         dbg_pr("Current Program Counter (PC): 0x%8x.\n", reg);  \
         change_stack_back(20, reg);                             \
     } while(0)
+#endif
 /********************************/
+
+struct task_struct *callinit_task;
+void * callinit_task_data;
 
 struct sync_args {
     wait_queue_head_t *wq;
@@ -70,7 +75,9 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     ** to correct it though.      **
     *(Pointer with fix DACR values)*
     *******************************/
+#ifdef DEBUG
     walk_registers();
+#endif
 
     //dbg_pr("Changing kernel domain id.\n");
     //change_kernel_domain();
@@ -116,16 +123,17 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
     sync->event = &event;
     sync->domain = domain;
 
-    task = kthread_create(threadfn, data, namefmt);
+    //task = kthread_create(threadfn, data, namefmt);
+    callinit_task_data = data;
     
     /* 
      * Changing stack domain ID
      * & Enforce this change by TLB flush??? if we do that all the time it's
      * VERY long!
      */
-    stack = set_task_stack_domain_id(domain, task);
+    //stack = set_task_stack_domain_id(domain, task);
 
-    wake_up_process(task);
+    wake_up_process(callinit_task);
 
     wait_event_interruptible(wq, event != 0);
     /*
@@ -141,7 +149,7 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
      * domain back or doesn't mistakenly allocate stuff there that isn't
      * supposed to be in this domain. 
      */
-    change_stack_back(DOMAIN_KERNEL, stack);
+    //change_stack_back(DOMAIN_KERNEL, stack);
 }
 
 /************ initcall wrapper ************/
@@ -158,8 +166,6 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
  * - One to be called first by the thread and get the return value
  *      in the (*void data) pointer.
  */
-
-// Problem if more complicated structure are in return?
 
 struct initcall_args {
     // these two are specific to each wrapper
@@ -282,6 +288,10 @@ void register_wrappers(void) {
 static int wrapper_init(void) {
     dbg_pr("drivers/public_domain/wrapper.c: init - registering wrappers.\n");
     register_wrappers();
+
+    callinit_task = kthread_create(call_initfunc, callinit_task_data,
+        "call_initfunc pre-created");
+
     return 0;
 }
 

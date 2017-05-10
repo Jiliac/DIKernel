@@ -610,6 +610,11 @@ config DIK_EVA
     help
         To add some prints in logs to measure the performance loss DIK causes
 
+config DIK_USE
+    bool "Turn on DIKernel usage."
+    help
+        For DIKernel code to be used
+
 #
 # CPU supports 36-bit I/O
 #

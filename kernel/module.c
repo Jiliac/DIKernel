@@ -2849,7 +2849,7 @@ static int move_module(struct module *mod, struct load_info *info)
 	} else
 		mod->module_init = NULL;
 
-#ifdef CONFIG_CPU_USE_DOMAINS
+#ifdef CONFIG_DIK_USE
     // initialize with incompatible domain id
     mod->mod_domain = -1;
     module_change_domain(mod);
