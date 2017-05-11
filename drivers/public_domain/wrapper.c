@@ -34,8 +34,10 @@ MODULE_LICENSE("GPL");
 #endif
 /********************************/
 
+#ifdef CONFIG_DIK_THREAD_USE
 struct task_struct *callinit_task;
 void * callinit_task_data;
+#endif
 
 struct sync_args {
     wait_queue_head_t *wq;
@@ -92,15 +94,14 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     dbg_pr("Writing DACR.\n");
     write_dacr(new_dacr);
 
+#ifdef DEBUG
     // Why calling printk doesn't trigger bug?
-    //printk("printk addr: %p\n", printk);
-    //change_stack_back(20, (unsigned int) printk);
+    printk("printk addr: %p\n", printk);
+    change_stack_back(20, (unsigned int) printk);
+#endif
 }
 
 void wake_calling_thread(struct sync_args *sync) {
-    dbg_pr("In call_initfunc thread. ");
-    print_sp();
-
     /* Really needed? Or the kernel will do it by himself when changing thread.
      */
     write_dacr(sync->old_dacr);
@@ -116,24 +117,30 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
 {
     DECLARE_WAIT_QUEUE_HEAD(wq);
     int event = false;
+#ifdef CONFIG_DIK_THREAD_USE
     unsigned long stack;
     struct task_struct *task;
+#endif
 
     sync->wq = &wq;
     sync->event = &event;
+#ifdef CONFIG_DIK_THREAD_USE
     sync->domain = domain;
 
-    //task = kthread_create(threadfn, data, namefmt);
-    callinit_task_data = data;
+    task = kthread_create(threadfn, data, namefmt);
+    //callinit_task_data = data;
     
     /* 
      * Changing stack domain ID
      * & Enforce this change by TLB flush??? if we do that all the time it's
      * VERY long!
      */
-    //stack = set_task_stack_domain_id(domain, task);
+    stack = set_task_stack_domain_id(domain, task);
 
     wake_up_process(callinit_task);
+#else
+    threadfn(data);
+#endif
 
     wait_event_interruptible(wq, event != 0);
     /*
@@ -149,7 +156,9 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
      * domain back or doesn't mistakenly allocate stuff there that isn't
      * supposed to be in this domain. 
      */
-    //change_stack_back(DOMAIN_KERNEL, stack);
+#ifdef CONFIG_DIK_THREAD_USE
+    change_stack_back(DOMAIN_KERNEL, stack);
+#endif
 }
 
 /************ initcall wrapper ************/
@@ -176,7 +185,7 @@ struct initcall_args {
     struct sync_args *sync;
 };
 
-int call_initfunc(void * data) {
+static int call_initfunc(void * data) {
     struct initcall_args *args;
     initcall_t fn;
 
@@ -193,7 +202,7 @@ int call_initfunc(void * data) {
     return 0;
 }
 
-int thread_initfunc(initcall_t fn, size_t domain) {
+static int thread_initfunc(initcall_t fn, size_t domain) {
     void * data;
     struct initcall_args args;
     struct sync_args sync;
@@ -204,7 +213,9 @@ int thread_initfunc(initcall_t fn, size_t domain) {
     args.sync = &sync;
     data = (void*) &args;
 
+#ifdef DEBUG
     walk_registers();
+#endif
 
     thread_and_sync(call_initfunc, data, "call_initfunc", &sync, domain);
 
@@ -217,7 +228,7 @@ struct exitcall_args {
     struct sync_args *sync;
 };
 
-int call_exitfunc(void *data) {
+static int call_exitfunc(void *data) {
     struct exitcall_args *args;
     void (*fn) (void);
 
@@ -229,7 +240,7 @@ int call_exitfunc(void *data) {
     return 0;
 }
 
-void thread_exitfunc(void (*fn) (void), size_t domain) {
+static void thread_exitfunc(void (*fn) (void), size_t domain) {
     void * data;
     struct exitcall_args args;
     struct sync_args sync;
@@ -289,8 +300,10 @@ static int wrapper_init(void) {
     dbg_pr("drivers/public_domain/wrapper.c: init - registering wrappers.\n");
     register_wrappers();
 
+#ifdef CONFIG_DIK_THREAD_USE
     callinit_task = kthread_create(call_initfunc, callinit_task_data,
         "call_initfunc pre-created");
+#endif
 
     return 0;
 }
