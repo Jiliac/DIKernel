@@ -17,6 +17,7 @@ MODULE_LICENSE("GPL");
 #include <asm/thread_info.h>    // for the macros (current_thread_info)
 
 /******* Debug Function *********/
+#ifdef DEBUG
 #define walk_registers()                                        \
     do {                                                        \
         size_t reg;                                             \
@@ -30,6 +31,7 @@ MODULE_LICENSE("GPL");
         dbg_pr("Current Program Counter (PC): 0x%8x.\n", reg);  \
         change_stack_back(20, reg);                             \
     } while(0)
+#endif
 /********************************/
 
 struct sync_args {
@@ -70,7 +72,9 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     ** to correct it though.      **
     *(Pointer with fix DACR values)*
     *******************************/
+#ifdef DEBUG
     walk_registers();
+#endif
 
     //dbg_pr("Changing kernel domain id.\n");
     //change_kernel_domain();
@@ -159,8 +163,6 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
  *      in the (*void data) pointer.
  */
 
-// Problem if more complicated structure are in return?
-
 struct initcall_args {
     // these two are specific to each wrapper
     initcall_t fn;
@@ -170,7 +172,7 @@ struct initcall_args {
     struct sync_args *sync;
 };
 
-int call_initfunc(void * data) {
+static int call_initfunc(void * data) {
     struct initcall_args *args;
     initcall_t fn;
 
@@ -187,7 +189,7 @@ int call_initfunc(void * data) {
     return 0;
 }
 
-int thread_initfunc(initcall_t fn, size_t domain) {
+static int thread_initfunc(initcall_t fn, size_t domain) {
     void * data;
     struct initcall_args args;
     struct sync_args sync;
@@ -198,7 +200,9 @@ int thread_initfunc(initcall_t fn, size_t domain) {
     args.sync = &sync;
     data = (void*) &args;
 
+#ifdef DEBUG
     walk_registers();
+#endif
 
     thread_and_sync(call_initfunc, data, "call_initfunc", &sync, domain);
 
@@ -211,7 +215,7 @@ struct exitcall_args {
     struct sync_args *sync;
 };
 
-int call_exitfunc(void *data) {
+static int call_exitfunc(void *data) {
     struct exitcall_args *args;
     void (*fn) (void);
 
@@ -223,7 +227,7 @@ int call_exitfunc(void *data) {
     return 0;
 }
 
-void thread_exitfunc(void (*fn) (void), size_t domain) {
+static void thread_exitfunc(void (*fn) (void), size_t domain) {
     void * data;
     struct exitcall_args args;
     struct sync_args sync;
