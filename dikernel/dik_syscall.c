@@ -43,15 +43,23 @@ void kthread_run_test(void) {
 #include <asm/domain.h>
 #include <linux/dik/dacr.h>     // write_dacr and read_dacr macros
 asmlinkage long sys_dikcall(void) {
-    size_t old_dacr, new_dacr;
+    //size_t old_dacr, new_dacr;
 
-    read_dacr(old_dacr);
-    new_dacr = (old_dacr & (~domain_val(DOMAIN_USER, DOMAIN_MANAGER)))
-        | domain_val(DOMAIN_USER, DOMAIN_NOACCESS);
-    dbg_pr("old dacr: 0x%x, new_dacr: 0x%x.\n", old_dacr, new_dacr);
-    write_dacr(new_dacr);
+    //read_dacr(old_dacr);
+    //new_dacr = (old_dacr & (~domain_val(DOMAIN_USER, DOMAIN_MANAGER)))
+    //    | domain_val(DOMAIN_USER, DOMAIN_NOACCESS);
+    //dbg_pr("old dacr: 0x%x, new_dacr: 0x%x.\n", old_dacr, new_dacr);
+    //write_dacr(new_dacr);
 
-    dump();
+    //dump();
+
+#ifdef CONFIG_DIK_USE
+    if(!request_module("domain_switcher"))
+        setting_wrappers();
+#endif
+#ifdef CONFIG_DIK_EVA
+    printk("Start evaluation\n");
+#endif
 
     return 0;
 }
