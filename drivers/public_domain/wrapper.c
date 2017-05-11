@@ -113,13 +113,16 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
 {
     DECLARE_WAIT_QUEUE_HEAD(wq);
     int event = false;
+#ifdef CONFIG_DIF_USE_THREAD
     unsigned long stack;
     struct task_struct *task;
+#endif
 
     sync->wq = &wq;
     sync->event = &event;
     sync->domain = domain;
 
+#ifdef CONFIG_DIF_USE_THREAD
     task = kthread_create(threadfn, data, namefmt);
     
     /* 
@@ -130,8 +133,13 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
     stack = set_task_stack_domain_id(domain, task);
 
     wake_up_process(task);
+#else
+    threadfn(data);
+#endif
 
     wait_event_interruptible(wq, event != 0);
+
+#ifdef CONFIG_DIF_USE_THREAD
     /*
      * Design wise change the Domain ID of the stack back to its original value
      * isn't a problem. HOWEVER, it is a big performance problem. Because of the
@@ -146,6 +154,7 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
      * supposed to be in this domain. 
      */
     change_stack_back(DOMAIN_KERNEL, stack);
+#endif
 }
 
 /************ initcall wrapper ************/
