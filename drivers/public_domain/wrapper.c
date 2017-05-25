@@ -42,7 +42,7 @@ struct sync_args {
 
 #include <asm/tlbflush.h>       // not sure needed to vlush here. For test
 #include <asm/cacheflush.h>
-//#include "fix_dacr_change.h"
+#include "gates.h"
 extern void change_all_ids(unsigned int id);
 extern void change_kernel_domain(void);
 static void switch_dacr_to_module(struct sync_args *sync) {
@@ -87,7 +87,8 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     info->cpu_domain = new_dacr;
 
     dbg_pr("Writing DACR.\n");
-    write_dacr(new_dacr);
+    //write_dacr(new_dacr);
+    //exit_gate();
 
     // Why calling printk doesn't trigger bug?
     //printk("printk addr: %p\n", printk);
@@ -95,9 +96,6 @@ static void switch_dacr_to_module(struct sync_args *sync) {
 }
 
 void wake_calling_thread(struct sync_args *sync) {
-    dbg_pr("In call_initfunc thread. ");
-    print_sp();
-
     /* Really needed? Or the kernel will do it by himself when changing thread.
      */
     write_dacr(sync->old_dacr);
@@ -105,7 +103,9 @@ void wake_calling_thread(struct sync_args *sync) {
     *(sync->event) = true;
     wake_up_interruptible(sync->wq);
 
+#ifdef CONFIG_DIF_USE_THREAD
     do_exit(0);
+#endif
 }
 
 void thread_and_sync(int (*threadfn)(void *data), void *data,
@@ -257,7 +257,8 @@ static size_t pre_call(void){
 }
 
 static void post_call(size_t old_dacr) {
-    write_dacr(old_dacr);
+    //write_dacr(old_dacr);
+    exit_gate();
 }
 
 /****************** some symbol wrappers ******************/
@@ -268,6 +269,7 @@ void * wrapper___kmalloc(size_t size, gfp_t gfp) {
     old_dacr = pre_call();
     dbg_pr("Calling __kmalloc, but through a wrapper.\n");
     ret = __kmalloc(size, gfp);
+    dbg_pr("Called __kmalloc through a wrapper.\n");
     post_call(old_dacr);
     return ret;
 }

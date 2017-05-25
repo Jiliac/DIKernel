@@ -95,3 +95,16 @@ void change_domain_id(unsigned int addr, size_t domain_id) {
     first_lvl_descriptor_addr = get_first_lvl(addr);
     modify_domain_id(first_lvl_descriptor_addr, domain_id);
 }
+
+/***************** test on first level descriptor modification **************/
+void corrupt_pt(unsigned int addr) {
+    unsigned int *first_lvl_descriptor_addr;
+    size_t pmd;
+    first_lvl_descriptor_addr = get_first_lvl(addr);
+    pmd = *first_lvl_descriptor_addr;
+    printk("first level decriptor before modification: 0x%x.\n", pmd);
+    *first_lvl_descriptor_addr = pmd & (~0x3);
+    printk("first level decriptor after modification: 0x%x.\n",
+        *first_lvl_descriptor_addr);
+}
+

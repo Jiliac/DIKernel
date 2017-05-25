@@ -11,4 +11,6 @@ void read_ttbr(void);
 void change_domain_id(unsigned int addr, size_t domain_id);
 unsigned int* get_first_lvl(unsigned int addr);
 
+void corrupt_pt(unsigned int addr);
+
 #endif
