@@ -3,10 +3,10 @@
 
 MODULE_LICENSE("GPL");
 
-#include <linux/dik/stack.h>
+#include <asm/domain.h>
+
 static int dummy_init(void) {
     dbg_pr("Hi everyone! I'm dummy module starting :-).\n");
-    print_sp();
     return 0;
 }
 

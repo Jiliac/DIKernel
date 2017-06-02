@@ -17,7 +17,7 @@
 int foo_kthread(void * data) {
     char * str = (char*) data;
     dbg_pr("foo_kthread: I hope this data was really a string: %s.\n", 
-        str);
+            str);
 
     dbg_pr("read_DACR in thread: ");
     read_DACR();
@@ -59,9 +59,9 @@ void dacr_poc(unsigned domain_right) {
     change_domain_id((unsigned int) pt_dacr + ALLOC_SIZE, DOMAIN);
 
     new_dacr = domain_val(DOMAIN, domain_right) |
-            domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
-            domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | 
-            domain_val(DOMAIN_IO, DOMAIN_CLIENT);
+        domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
+        domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | 
+        domain_val(DOMAIN_IO, DOMAIN_CLIENT);
 
     write_dacr(new_dacr);
     isb();
@@ -86,22 +86,12 @@ asmlinkage long sys_dikcall(void) {
     if(!pt_dacr)
         pt_dacr = kmalloc(ALLOC_SIZE, GFP_KERNEL);
     //printk("kmallocing and putting it in an open domain\n");
-    dacr_poc(DOMAIN_MANAGER);
+    dacr_poc(DOMAIN_NOACCESS);
     //printk("kmallocing and putting it in a close domain\n");
     //dacr_poc(DOMAIN_NOACCESS);
     //printk("\ntest end.\n-----------------\n\n");
 
 
     //dump();   // Dump page tables
-
-/* Should be uncommented when want to try loading module again */
-//#ifdef CONFIG_DIK_USE
-//    if(!request_module("domain_switcher"))
-//        setting_wrappers();
-//#endif
-//#ifdef CONFIG_DIK_EVA
-//    printk("Start evaluation\n");
-//#endif
-
     return 0;
 }

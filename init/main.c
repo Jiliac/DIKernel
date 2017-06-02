@@ -1045,11 +1045,11 @@ static noinline void __init kernel_init_freeable(void)
 	load_default_modules();
 /* Placed in DIK syscall for debug
  */
-//#ifdef CONFIG_DIK_USE
-//    if(!request_module("domain_switcher"))
-//        setting_wrappers();
-//#endif
-//#ifdef CONFIG_DIK_EVA
-//    printk("Start evaluation\n");
-//#endif
+#ifdef CONFIG_DIK_USE
+    if(!request_module("domain_switcher"))
+        setting_wrappers();
+#endif
+#ifdef CONFIG_DIK_EVA
+    printk("Start evaluation\n");
+#endif
 }

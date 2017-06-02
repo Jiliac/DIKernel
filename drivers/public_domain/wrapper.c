@@ -76,17 +76,14 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     walk_registers();
 #endif
 
-    //dbg_pr("Changing kernel domain id.\n");
     //change_kernel_domain();
     //asm volatile ("" ::: "memory"); /* barrier */
     //local_flush_tlb_all();
     //flush_cache_all();
     //asm volatile ("" ::: "memory"); /* barrier */
-    //dbg_pr("Done changing domain ids.\n");
 
     info->cpu_domain = new_dacr;
 
-    dbg_pr("Writing DACR.\n");
     //write_dacr(new_dacr);
     //exit_gate();
 
@@ -103,7 +100,7 @@ void wake_calling_thread(struct sync_args *sync) {
     *(sync->event) = true;
     wake_up_interruptible(sync->wq);
 
-#ifdef CONFIG_DIF_USE_THREAD
+#ifdef CONFIG_DIK_USE_THREAD
     do_exit(0);
 #endif
 }
@@ -113,7 +110,7 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
 {
     DECLARE_WAIT_QUEUE_HEAD(wq);
     int event = false;
-#ifdef CONFIG_DIF_USE_THREAD
+#ifdef CONFIG_DIK_USE_THREAD
     unsigned long stack;
     struct task_struct *task;
 #endif
@@ -122,7 +119,7 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
     sync->event = &event;
     sync->domain = domain;
 
-#ifdef CONFIG_DIF_USE_THREAD
+#ifdef CONFIG_DIK_USE_THREAD
     task = kthread_create(threadfn, data, namefmt);
     
     /* 
@@ -139,7 +136,7 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
 
     wait_event_interruptible(wq, event != 0);
 
-#ifdef CONFIG_DIF_USE_THREAD
+#ifdef CONFIG_DIK_USE_THREAD
     /*
      * Design wise change the Domain ID of the stack back to its original value
      * isn't a problem. HOWEVER, it is a big performance problem. Because of the
@@ -191,7 +188,6 @@ static int call_initfunc(void * data) {
     fn = args->fn;
 
     switch_dacr_to_module(args->sync);
-    //dbg_pr("Bug point? LAST\n");
     args->ret = fn();
 
     wake_calling_thread(args->sync);
