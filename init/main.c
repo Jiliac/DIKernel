@@ -759,7 +759,7 @@ static bool __init_or_module initcall_blacklisted(initcall_t fn)
 #endif
 __setup("initcall_blacklist=", initcall_blacklist);
 
-static int __init_or_module do_one_initcall_debug(initcall_t fn, size_t domain)
+static int __init_or_module do_one_initcall_debug(initcall_t fn)
 {
 	ktime_t calltime, delta, rettime;
 	unsigned long long duration;
@@ -768,7 +768,7 @@ static int __init_or_module do_one_initcall_debug(initcall_t fn, size_t domain)
 	printk(KERN_DEBUG "calling  %pF @ %i\n", fn, task_pid_nr(current));
 	calltime = ktime_get();
 #ifdef CONFIG_DIK_USE
-	ret = call_wrapper_initcall(fn, domain);
+	ret = call_wrapper_initcall(fn);
 #else
     ret = fn();
 #endif
@@ -781,7 +781,7 @@ static int __init_or_module do_one_initcall_debug(initcall_t fn, size_t domain)
 	return ret;
 }
 
-int __init_or_module do_one_initcall(initcall_t fn, size_t domain)
+int __init_or_module do_one_initcall(initcall_t fn)
 {
 	int count = preempt_count();
 	int ret;
@@ -791,10 +791,10 @@ int __init_or_module do_one_initcall(initcall_t fn, size_t domain)
 		return -EPERM;
 
 	if (initcall_debug)
-		ret = do_one_initcall_debug(fn, domain);
+		ret = do_one_initcall_debug(fn);
 	else
 #ifdef CONFIG_DIK_USE
-        ret = call_wrapper_initcall(fn, domain);
+        ret = call_wrapper_initcall(fn);
 #else
         ret = fn();
 #endif        
@@ -862,7 +862,7 @@ static void __init do_initcall_level(int level)
 		   &repair_env_string);
 
 	for (fn = initcall_levels[level]; fn < initcall_levels[level+1]; fn++)
-		do_one_initcall(*fn, DOMAIN_KERNEL);
+		do_one_initcall(*fn);
 }
 
 static void __init do_initcalls(void)
@@ -898,7 +898,7 @@ static void __init do_pre_smp_initcalls(void)
 	initcall_t *fn;
 
 	for (fn = __initcall_start; fn < __initcall0_start; fn++)
-		do_one_initcall(*fn, DOMAIN_KERNEL);
+		do_one_initcall(*fn);
 }
 
 /*

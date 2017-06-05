@@ -3098,7 +3098,7 @@ static noinline int do_init_module(struct module *mod)
 #ifdef CONFIG_DIK_EVA
         printk("module insertion finished %s\n", mod->name);
 #endif
-		ret = do_one_initcall(mod->init, mod->mod_domain);
+		ret = do_one_initcall(mod->init);
 #ifdef CONFIG_DIK_EVA
         printk("do_one_initcall done %s\n", mod->name);
 #endif

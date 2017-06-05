@@ -3,24 +3,23 @@
 #include "syms_modif.h"
 
 /****************** initcall wrapper setup ************/
-int (*wrapper_initcall) (initcall_t fn, size_t domain) = NULL;
+int (*wrapper_initcall) (initcall_t fn) = NULL;
 void register_wrapper_initcall(void * ptr) {
     dbg_pr("dikernel/set_wrap.c: register_wrapper_initcall called.\n");
     wrapper_initcall = ptr;
 }
 EXPORT_SYMBOL(register_wrapper_initcall);
 
-int call_wrapper_initcall(initcall_t fn, size_t domain) {
+int call_wrapper_initcall(initcall_t fn) {
     int ret;
-    if(!wrapper_initcall) {
+    if(!wrapper_initcall)
         return fn();
-    }
-    ret = wrapper_initcall(fn, domain);
+    ret = wrapper_initcall(fn);
     return ret;
 }
 
 /****************** exitcall wrapper setup ************/
-void (*wrapper_exitcall) (void (*fn) (void), size_t domain) = NULL;
+void (*wrapper_exitcall) (void (*fn) (void)) = NULL;
 void register_wrapper_exitcall(void * ptr) {
     dbg_pr("dikernel/set_wrap.c: register_wrapper_exitcall called.\n");
     wrapper_exitcall = ptr;
@@ -31,7 +30,7 @@ void call_wrapper_exitcall(void (*fn) (void)) {
     if(!wrapper_exitcall)
         fn();
     else
-        wrapper_exitcall(fn, 0);
+        wrapper_exitcall(fn);
 }
 
 /****************** switch to mod setup ***************/

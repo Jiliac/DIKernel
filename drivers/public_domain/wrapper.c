@@ -39,7 +39,7 @@ struct sync_args {
     wait_queue_head_t *wq;
     int *event;
 #endif
-    size_t domain, old_dacr;
+    size_t old_dacr;
 };
 
 #include <asm/tlbflush.h>       // not sure needed to vlush here. For test
@@ -55,7 +55,7 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     size_t new_dacr;
     struct thread_info *info = current_thread_info();
     read_dacr(sync->old_dacr);
-    new_dacr = domain_val(sync->domain, DOMAIN_MANAGER) |
+    new_dacr = domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER) |
             domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
             domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) |  /* virtual kernel
                                                           * must be closed.*/
@@ -65,7 +65,8 @@ static void switch_dacr_to_module(struct sync_args *sync) {
     //new_dacr = (sync->old_dacr & (~domain_val(DOMAIN_KERNEL_VIRTUAL, DOMAIN_MANAGER)))
     //        | domain_val(DOMAIN_KERNEL, DOMAIN_NOACCESS);    // just closing
                                                             // kernel...
-    dbg_pr("New DACR value to be set: 0x%x. Module domain id: %i\n", new_dacr, sync->domain);
+    dbg_pr("New DACR value to be set: 0x%x. Module domain id: %i\n", new_dacr,
+        DOMAIN_EXTENSION);
 
     /*******************************
     *** !!!NEED TO BE CAREFUL!!! ***
@@ -107,7 +108,7 @@ void wake_calling_thread(struct sync_args *sync) {
 }
 
 void thread_and_sync(int (*threadfn)(void *data), void *data,
-    const char *namefmt, struct sync_args *sync, size_t domain)
+    const char *namefmt, struct sync_args *sync)
 {
 #ifdef CONFIG_DIK_USE_THREAD
     DECLARE_WAIT_QUEUE_HEAD(wq);
@@ -118,8 +119,6 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
     sync->event = &event;
 #endif
 
-    sync->domain = domain;
-
 #ifdef CONFIG_DIK_USE_THREAD
     dbg_pr("Using thread for extensions.\n");
     task = kthread_create(threadfn, data, namefmt);
@@ -129,7 +128,7 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
      * & Enforce this change by TLB flush??? if we do that all the time it's
      * VERY long!
      */
-    stack = set_task_stack_domain_id(domain, task);
+    stack = set_task_stack_domain_id(DOMAIN_EXTENSION, task);
 
     wake_up_process(task);
 
@@ -193,7 +192,7 @@ static int call_initfunc(void * data) {
     return 0;
 }
 
-static int thread_initfunc(initcall_t fn, size_t domain) {
+static int thread_initfunc(initcall_t fn) {
     void * data;
     struct initcall_args args;
     struct sync_args sync;
@@ -208,7 +207,7 @@ static int thread_initfunc(initcall_t fn, size_t domain) {
     walk_registers();
 #endif
 
-    thread_and_sync(call_initfunc, data, "call_initfunc", &sync, domain);
+    thread_and_sync(call_initfunc, data, "call_initfunc", &sync);
 
     return args.ret;
 }
@@ -225,7 +224,7 @@ static int call_exitfunc(void *data) {
 
     dbg_pr("*********** CALL_EXITFUNC ***********\n");
     args = (struct exitcall_args*) data;
-    fn = args->fn,
+    fn = args->fn;
     switch_dacr_to_module(args->sync);
     fn();
     
@@ -233,7 +232,7 @@ static int call_exitfunc(void *data) {
     return 0;
 }
 
-static void thread_exitfunc(void (*fn) (void), size_t domain) {
+static void thread_exitfunc(void (*fn) (void)) {
     void * data;
     struct exitcall_args args;
     struct sync_args sync;
@@ -242,7 +241,7 @@ static void thread_exitfunc(void (*fn) (void), size_t domain) {
     args.sync = &sync;
     data = (void*) &args;
 
-    thread_and_sync(call_exitfunc, data, "call_exitfunc", &sync, domain);
+    thread_and_sync(call_exitfunc, data, "call_exitfunc", &sync);
 }
 
 /***************** factorizing wrapper code ***************/
