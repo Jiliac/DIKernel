@@ -35,8 +35,10 @@ MODULE_LICENSE("GPL");
 /********************************/
 
 struct sync_args {
+#ifdef CONFIG_DIK_USE_THREAD
     wait_queue_head_t *wq;
     int *event;
+#endif
     size_t domain, old_dacr;
 };
 
@@ -97,10 +99,9 @@ void wake_calling_thread(struct sync_args *sync) {
      */
     write_dacr(sync->old_dacr);
     
+#ifdef CONFIG_DIK_USE_THREAD
     *(sync->event) = true;
     wake_up_interruptible(sync->wq);
-
-#ifdef CONFIG_DIK_USE_THREAD
     do_exit(0);
 #endif
 }
@@ -108,18 +109,19 @@ void wake_calling_thread(struct sync_args *sync) {
 void thread_and_sync(int (*threadfn)(void *data), void *data,
     const char *namefmt, struct sync_args *sync, size_t domain)
 {
+#ifdef CONFIG_DIK_USE_THREAD
     DECLARE_WAIT_QUEUE_HEAD(wq);
     int event = false;
-#ifdef CONFIG_DIK_USE_THREAD
     unsigned long stack;
     struct task_struct *task;
-#endif
-
     sync->wq = &wq;
     sync->event = &event;
+#endif
+
     sync->domain = domain;
 
 #ifdef CONFIG_DIK_USE_THREAD
+    dbg_pr("Using thread for extensions.\n");
     task = kthread_create(threadfn, data, namefmt);
     
     /* 
@@ -130,13 +132,8 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
     stack = set_task_stack_domain_id(domain, task);
 
     wake_up_process(task);
-#else
-    threadfn(data);
-#endif
 
     wait_event_interruptible(wq, event != 0);
-
-#ifdef CONFIG_DIK_USE_THREAD
     /*
      * Design wise change the Domain ID of the stack back to its original value
      * isn't a problem. HOWEVER, it is a big performance problem. Because of the
@@ -151,6 +148,8 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
      * supposed to be in this domain. 
      */
     change_stack_back(DOMAIN_KERNEL, stack);
+#else
+    threadfn(data);
 #endif
 }
 
@@ -224,8 +223,10 @@ static int call_exitfunc(void *data) {
     struct exitcall_args *args;
     void (*fn) (void);
 
+    dbg_pr("*********** CALL_EXITFUNC ***********\n");
     args = (struct exitcall_args*) data;
     fn = args->fn,
+    switch_dacr_to_module(args->sync);
     fn();
     
     wake_calling_thread(args->sync);
@@ -245,15 +246,13 @@ static void thread_exitfunc(void (*fn) (void), size_t domain) {
 }
 
 /***************** factorizing wrapper code ***************/
-static size_t pre_call(void){
+static void pre_call(void){
     size_t old_dacr;
     read_dacr(old_dacr);
     write_dacr(KERNEL_DACR);
-    return old_dacr;
 }
 
-static void post_call(size_t old_dacr) {
-    //write_dacr(old_dacr);
+static void post_call(void) {
     exit_gate();
 }
 
@@ -261,23 +260,21 @@ static void post_call(size_t old_dacr) {
 
 void * wrapper___kmalloc(size_t size, gfp_t gfp) {
     void * ret;
-    size_t old_dacr;
-    old_dacr = pre_call();
+    pre_call();
     dbg_pr("Calling __kmalloc, but through a wrapper.\n");
     ret = __kmalloc(size, gfp);
     dbg_pr("Called __kmalloc through a wrapper.\n");
-    post_call(old_dacr);
+    post_call();
     return ret;
 }
 EXPORT_SYMBOL(wrapper___kmalloc);
 
 extern void __aeabi_unwind_cpp_pr1(void);
 void wrapper___aeabi_unwind_cpp_pr1(void) {
-    size_t old_dacr;
-    old_dacr = pre_call();
+    pre_call();
     dbg_pr("Calling __aeabi_unwind_cpp_pr1 through a wrapper.\n");
     __aeabi_unwind_cpp_pr1();
-    post_call(old_dacr);
+    post_call();
 }
 EXPORT_SYMBOL(wrapper___aeabi_unwind_cpp_pr1);
 

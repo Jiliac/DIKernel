@@ -28,11 +28,10 @@ void register_wrapper_exitcall(void * ptr) {
 EXPORT_SYMBOL(register_wrapper_exitcall);
 
 void call_wrapper_exitcall(void (*fn) (void)) {
-    // DOMAIN PASSING TO BE PASSED HERE AS WELL !!!!!!
-    if(!wrapper_exitcall) {
+    if(!wrapper_exitcall)
         fn();
-    }
-    wrapper_exitcall(fn, 0);
+    else
+        wrapper_exitcall(fn, 0);
 }
 
 /****************** switch to mod setup ***************/

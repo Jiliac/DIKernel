@@ -850,9 +850,9 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
     pr_debug("kernel/module.c: about to call mod->exit if it exits.\n");
 	if (mod->exit != NULL)
 #ifdef CONFIG_DIK_USE
-        //call_wrapper_exitcall(mod->exit);
+        call_wrapper_exitcall(mod->exit);
         // Bug when on RasPi. @TODO
-        mod->exit();
+        //mod->exit();
 #else
         mod->exit();
 #endif
