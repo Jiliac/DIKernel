@@ -367,9 +367,6 @@ struct module {
 	ctor_fn_t *ctors;
 	unsigned int num_ctors;
 #endif
-#ifdef CONFIG_CPU_USE_DOMAINS
-    size_t mod_domain;
-#endif
 };
 #ifndef MODULE_ARCH_INIT
 #define MODULE_ARCH_INIT {}
