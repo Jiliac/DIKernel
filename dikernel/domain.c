@@ -8,8 +8,10 @@ void module_change_domain(struct module *mod) {
     if(!get_wrapper_set())
         return;
 
-    change_domain_id((unsigned int) mod->module_core, DOMAIN_EXTENSION);
+    change_domain_id((unsigned int) mod->module_core, DOMAIN_EXTENSION,
+        mod->core_size);
     if(mod->module_init) {
-        change_domain_id((unsigned int) mod->module_init, DOMAIN_EXTENSION);
+        change_domain_id((unsigned int) mod->module_init, DOMAIN_EXTENSION,
+            mod->init_size);
     }
 }

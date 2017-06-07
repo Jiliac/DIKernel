@@ -1,5 +1,3 @@
-void change_stack_domain_id(unsigned int new_id);
-
 #define read_sp(sp) \
     asm volatile("mov %0, r13" : "=r" (sp) :)
 

@@ -7,8 +7,6 @@
 #include <linux/dik/myprint.h>
 #include "table_walk.h"     // for read_ttbr
 
-#define BUF_SIZE       1000000 
-
 /***************** Kernel Thread Test *****************/
 
 #include <linux/kthread.h>
@@ -39,7 +37,7 @@ void kthread_run_test(void) {
 }
 
 /********************** DACR PoC ***********************/
-#define ALLOC_SIZE (1 << 20)
+#define ALLOC_SIZE (1 << 18)
 #define DOMAIN 8
 int * pt_dacr = NULL;
 int * pt_dummy = NULL;
@@ -55,8 +53,8 @@ void dacr_poc(unsigned domain_right) {
 
     corrupt_pt((unsigned int) pt_corrupt);
     corrupt_pt((unsigned int) pt_corrupt + ALLOC_SIZE);
-    change_domain_id((unsigned int) pt_dacr, DOMAIN);   // from dikernel/table_walk.c function
-    change_domain_id((unsigned int) pt_dacr + ALLOC_SIZE, DOMAIN);
+    // from dikernel/table_walk.c function
+    change_domain_id((unsigned int) pt_dacr, DOMAIN, ALLOC_SIZE);
 
     new_dacr = domain_val(DOMAIN, domain_right) |
         domain_val(DOMAIN_USER, DOMAIN_MANAGER) |

@@ -9,7 +9,13 @@
 // This is for debug. Likely to be removed later
 void change_stack_back(size_t domain_id, unsigned int stack) {
     if(domain_id < 16) {
-        change_domain_id(stack, domain_id);
+        /* stack size doesn't matter because always on a couple of contiguous
+         * pages.
+         * OR, it does matter if we consider the cases were two pages are
+         * concerned by different PDE :( @TODO */
+        change_domain_id(stack, domain_id, 0);
+        /* The two following lines needs to be done in change_domain_id instead.
+         * Moreover, these aren't working... @TODO */
         flush_tlb_kernel_page(stack);
         flush_tlb_kernel_page(stack + PAGE_SIZE);
     } else {
@@ -27,7 +33,7 @@ EXPORT_SYMBOL(change_stack_back);
 
 unsigned long set_task_stack_domain_id(size_t domain_id, struct task_struct *task) {
     unsigned int stack = (unsigned int) task->stack;
-    change_domain_id(stack, domain_id);
+    change_domain_id(stack, domain_id, 0);
     flush_tlb_kernel_page(stack);
     flush_tlb_kernel_page(stack + PAGE_SIZE);
     return stack;

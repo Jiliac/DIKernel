@@ -19,23 +19,26 @@
 void entry_gate(void) {
     int reg;
     do {
-        asm volatile("mov r6, %0" :: "r" (ENTRY_DACR));
+        asm volatile("mov r6, %0" :: "r" ENTRY_DACR);
         asm volatile("MCR p15, 0, r6, c3, c0, 0" ::);
         asm volatile("mov %0, r6" : "=r" (reg):);
     } while(reg != ENTRY_DACR);
-    dbg_pr("r6 (that has been loaded in dacr): %x", reg);
+    dbg_pr("entry_gate: r6 (that has been loaded in dacr): %x", reg);
     asm volatile("MRC p15, 0, %0, c3, c0, 0" : "=r" (reg) :);
     dbg_pr(" - DACR value: %x\n", reg);
 }
 
 void exit_gate(void) {
     int reg;
+    dbg_pr("Loading EXIT value in DACR: 0x%x.\n", EXIT_DACR);
     do {
-        asm volatile("mov r6, %0" :: "r" (EXIT_DACR));
+        asm volatile("mov r6, %0" :: "r" EXIT_DACR);
         asm volatile("MCR p15, 0, r6, c3, c0, 0" ::);
         asm volatile("mov %0, r6" : "=r" (reg):);
     } while(reg != EXIT_DACR);
-    dbg_pr("r6 (that has been loaded in dacr): %x", reg);
+    /* Be careful, these prints won't work once the base kernel is closed.
+     */
+    dbg_pr("exit_gate: r6 (that has been loaded in dacr): %x", reg);
     asm volatile("MRC p15, 0, %0, c3, c0, 0" : "=r" (reg) :);
     dbg_pr(" - DACR value: %x\n", reg);
 }

@@ -5,13 +5,6 @@
 #include <linux/dik/myprint.h>
 #include "table_walk.h"     // for modify_domain_id
 
-/************** Change Stack Domain ID ************/
-void change_stack_domain_id(unsigned int new_id) {
-    size_t sp;
-    read_sp(sp);
-    change_domain_id(sp, new_id);
-}
-
 /****************** just for test *****************/
 size_t print_sp(void) {
     size_t sp;

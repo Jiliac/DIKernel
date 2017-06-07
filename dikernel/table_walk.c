@@ -19,6 +19,70 @@ void dump(void) {
     }
 }
 
+//void read_ttbr(void) {
+//    unsigned int ttbr0, ttbr1;
+//    int miscellanious;
+//    asm volatile("MRRC p15, 0, %0, %1, c2" : "=r" (ttbr0), "=r" (miscellanious) : );
+//    dbg_pr("ttbr0: %8x.\n", ttbr0);
+//    asm volatile("MRRC p15, 1, %0, %1, c2" : "=r" (ttbr1), "=r" (miscellanious) : );
+//    dbg_pr("ttbr1: %8x.\n", ttbr1);
+//
+//    return;
+//}
+
+/**************************** Miscellanious *********************************/
+unsigned int get_pmd_bit(unsigned long addr) {
+    return (addr >> 20) & 1;
+}
+/****************************************************************************/
+
+#define     FIRST_LVL_SHIFT 20
+#define     FIRST_LVL_SIZE  (1UL << FIRST_LVL_SHIFT)
+unsigned int* get_first_lvl(unsigned int addr) {
+    unsigned int *pgd;
+    unsigned int *first_lvl_descriptor_addr;
+
+    pgd = (unsigned int*) (init_mm.pgd);
+    first_lvl_descriptor_addr = pgd + ((addr & 0xfff00000) >> FIRST_LVL_SHIFT);
+    dbg_pr("addr: 0x%x, pgd: %p, first_lvl_descriptor_addr: %p.\n",
+            addr, pgd, first_lvl_descriptor_addr);
+    return first_lvl_descriptor_addr;
+}
+
+/* Memory is supposed contiguous between addr and addr+size. */
+void change_domain_id(unsigned int addr, size_t domain_id, unsigned int size) {
+    int i;
+    unsigned int *first_lvl_descriptor_addr;
+    unsigned int first_lvl_max_index = (size * 4 / FIRST_LVL_SIZE) + 1;
+    for(i = 0; i < first_lvl_max_index; ++i) {
+        first_lvl_descriptor_addr = get_first_lvl(addr);
+        modify_domain_id(first_lvl_descriptor_addr, domain_id);
+        addr += FIRST_LVL_SIZE;
+    }
+    dbg_pr("change_domain_id: addr 0x%x covers %d different PDE(s).\n",
+        addr, first_lvl_max_index);
+}
+
+/***************** test on first level descriptor modification **************/
+void corrupt_pt(unsigned int addr) {
+    unsigned int *first_lvl_descriptor_addr;
+    size_t pmd;
+    first_lvl_descriptor_addr = get_first_lvl(addr);
+    pmd = *first_lvl_descriptor_addr;
+    printk("first level decriptor before modification: 0x%x.\n", pmd);
+    *first_lvl_descriptor_addr = pmd & (~0x3);
+    printk("first level decriptor after modification: 0x%x.\n",
+        *first_lvl_descriptor_addr);
+}
+
+
+/**************************************************************************/
+#ifdef CONFIG_VIRTUAL_BK_DID
+/* That was in case there is a problem specifically with domain 0.
+ * Maybe something hard coded in the hardware.
+ * The whole base kernel would be transfer to another domain.
+ */
+
 #include <asm/domain.h>
 void change_kernel_domain(void) {
     pgd_t * pgd;
@@ -59,52 +123,7 @@ void change_all_ids(unsigned int id) {
 
 }
 EXPORT_SYMBOL(change_all_ids);
+#endif // CONFIG_VIRTUAL_BK_DID
 /**************************************************************************/
 
-void read_ttbr(void) {
-    unsigned int ttbr0, ttbr1;
-    int miscellanious;
-    asm volatile("MRRC p15, 0, %0, %1, c2" : "=r" (ttbr0), "=r" (miscellanious) : );
-    dbg_pr("ttbr0: %8x.\n", ttbr0);
-    asm volatile("MRRC p15, 1, %0, %1, c2" : "=r" (ttbr1), "=r" (miscellanious) : );
-    dbg_pr("ttbr1: %8x.\n", ttbr1);
-
-    return;
-}
-
-/**************************** Miscellanious *********************************/
-unsigned int get_pmd_bit(unsigned long addr) {
-    return (addr >> 20) & 1;
-}
-/****************************************************************************/
-
-#define     FIRST_LVL_SHIFT 20
-unsigned int* get_first_lvl(unsigned int addr) {
-    unsigned int *pgd;
-    unsigned int *first_lvl_descriptor_addr;
-
-    pgd = (unsigned int*) (init_mm.pgd);
-    first_lvl_descriptor_addr = pgd + ((addr & 0xfff00000) >> FIRST_LVL_SHIFT);
-    dbg_pr("addr: 0x%x, pgd: %p, first_lvl_descriptor_addr: %p.\n",
-            addr, pgd, first_lvl_descriptor_addr);
-    return first_lvl_descriptor_addr;
-}
-
-void change_domain_id(unsigned int addr, size_t domain_id) {
-    unsigned int *first_lvl_descriptor_addr;
-    first_lvl_descriptor_addr = get_first_lvl(addr);
-    modify_domain_id(first_lvl_descriptor_addr, domain_id);
-}
-
-/***************** test on first level descriptor modification **************/
-void corrupt_pt(unsigned int addr) {
-    unsigned int *first_lvl_descriptor_addr;
-    size_t pmd;
-    first_lvl_descriptor_addr = get_first_lvl(addr);
-    pmd = *first_lvl_descriptor_addr;
-    printk("first level decriptor before modification: 0x%x.\n", pmd);
-    *first_lvl_descriptor_addr = pmd & (~0x3);
-    printk("first level decriptor after modification: 0x%x.\n",
-        *first_lvl_descriptor_addr);
-}
 

@@ -39,66 +39,21 @@ struct sync_args {
     wait_queue_head_t *wq;
     int *event;
 #endif
-    size_t old_dacr;
 };
 
 #include <asm/tlbflush.h>       // not sure needed to vlush here. For test
 #include <asm/cacheflush.h>
 #include "gates.h"
+
+#ifdef CONFIG_VIRTUAL_BK_DID
+// To Remove code. Let it in case this hypothesis if true in the end.
 extern void change_all_ids(unsigned int id);
 extern void change_kernel_domain(void);
-static void switch_dacr_to_module(struct sync_args *sync) {
-    /*
-     * Changing thread cpu_domain
-     * i.e. the DACR the kernel use while running this thread
-     */
-    size_t new_dacr;
-    struct thread_info *info = current_thread_info();
-    read_dacr(sync->old_dacr);
-    new_dacr = domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER) |
-            domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
-            domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) |  /* virtual kernel
-                                                          * must be closed.*/
-            domain_val(DOMAIN_IO, DOMAIN_CLIENT) |
-            domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER);
-
-    //new_dacr = (sync->old_dacr & (~domain_val(DOMAIN_KERNEL_VIRTUAL, DOMAIN_MANAGER)))
-    //        | domain_val(DOMAIN_KERNEL, DOMAIN_NOACCESS);    // just closing
-                                                            // kernel...
-    dbg_pr("New DACR value to be set: 0x%x. Module domain id: %i\n", new_dacr,
-        DOMAIN_EXTENSION);
-
-    /*******************************
-    *** !!!NEED TO BE CAREFUL!!! ***
-    ** This instruction shouldn't **
-    ** stay as is here. Know how  **
-    ** to correct it though.      **
-    *(Pointer with fix DACR values)*
-    *******************************/
-#ifdef DEBUG
-    walk_registers();
 #endif
 
-    //change_kernel_domain();
-    //asm volatile ("" ::: "memory"); /* barrier */
-    //local_flush_tlb_all();
-    //flush_cache_all();
-    //asm volatile ("" ::: "memory"); /* barrier */
-
-    info->cpu_domain = new_dacr;
-
-    //write_dacr(new_dacr);
-    //exit_gate();
-
-    // Why calling printk doesn't trigger bug?
-    //printk("printk addr: %p\n", printk);
-    //change_stack_back(20, (unsigned int) printk);
-}
 
 void wake_calling_thread(struct sync_args *sync) {
-    /* Really needed? Or the kernel will do it by himself when changing thread.
-     */
-    write_dacr(sync->old_dacr);
+    entry_gate();
     
 #ifdef CONFIG_DIK_USE_THREAD
     *(sync->event) = true;
@@ -146,7 +101,9 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
      * domain back or doesn't mistakenly allocate stuff there that isn't
      * supposed to be in this domain. 
      */
-    change_stack_back(DOMAIN_KERNEL, stack);
+    
+    //not necessary and long
+    //change_stack_back(DOMAIN_KERNEL, stack);
 #else
     threadfn(data);
 #endif
@@ -185,8 +142,9 @@ static int call_initfunc(void * data) {
     args = (struct initcall_args*) data;
     fn = args->fn;
 
-    switch_dacr_to_module(args->sync);
+    exit_gate();
     args->ret = fn();
+    dbg_pr("Coming back from initcall\n");
 
     wake_calling_thread(args->sync);
     return 0;
@@ -208,6 +166,7 @@ static int thread_initfunc(initcall_t fn) {
 #endif
 
     thread_and_sync(call_initfunc, data, "call_initfunc", &sync);
+    dbg_pr("Closed initcall thread.\n");
 
     return args.ret;
 }
@@ -225,7 +184,8 @@ static int call_exitfunc(void *data) {
     dbg_pr("*********** CALL_EXITFUNC ***********\n");
     args = (struct exitcall_args*) data;
     fn = args->fn;
-    switch_dacr_to_module(args->sync);
+
+    exit_gate();
     fn();
     
     wake_calling_thread(args->sync);
@@ -237,6 +197,8 @@ static void thread_exitfunc(void (*fn) (void)) {
     struct exitcall_args args;
     struct sync_args sync;
 
+    dbg_pr("********** THREAD_EXITFUNC **********\n");
+
     args.fn = fn;
     args.sync = &sync;
     data = (void*) &args;
@@ -246,13 +208,13 @@ static void thread_exitfunc(void (*fn) (void)) {
 
 /***************** factorizing wrapper code ***************/
 static void pre_call(void){
-    size_t old_dacr;
-    read_dacr(old_dacr);
-    write_dacr(KERNEL_DACR);
+    entry_gate();
 }
 
 static void post_call(void) {
     exit_gate();
+    dbg_pr("After the exit gate, changing DACR to 0x30df to trigger bug.\n");
+    write_dacr(0x30df);
 }
 
 /****************** some symbol wrappers ******************/
