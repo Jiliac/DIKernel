@@ -38,6 +38,7 @@ unsigned int get_pmd_bit(unsigned long addr) {
 
 #define     FIRST_LVL_SHIFT 20
 #define     FIRST_LVL_SIZE  (1UL << FIRST_LVL_SHIFT)
+#define     FIRST_LVL_MASK  (FIRST_LVL_SIZE-1)
 unsigned int* get_first_lvl(unsigned int addr) {
     unsigned int *pgd;
     unsigned int *first_lvl_descriptor_addr;
@@ -53,7 +54,11 @@ unsigned int* get_first_lvl(unsigned int addr) {
 void change_domain_id(unsigned int addr, size_t domain_id, unsigned int size) {
     int i;
     unsigned int *first_lvl_descriptor_addr;
-    unsigned int first_lvl_max_index = (size * 4 / FIRST_LVL_SIZE) + 1;
+    unsigned int first_lvl_max_index;
+    size = (size*4) + (addr & FIRST_LVL_MASK);
+    first_lvl_max_index = (size / FIRST_LVL_SIZE) + 1;
+    dbg_pr("size: 0x%x - 1st lvl index: %d.\n", size, first_lvl_max_index);
+    //first_lvl_max_index = (size*4 / FIRST_LVL_SIZE) + 1;
     for(i = 0; i < first_lvl_max_index; ++i) {
         first_lvl_descriptor_addr = get_first_lvl(addr);
         modify_domain_id(first_lvl_descriptor_addr, domain_id);
