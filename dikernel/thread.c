@@ -14,10 +14,11 @@ void change_stack_back(size_t domain_id, unsigned int stack) {
          * OR, it does matter if we consider the cases were two pages are
          * concerned by different PDE :( @TODO */
         change_domain_id(stack, domain_id, 0);
+
         /* The two following lines needs to be done in change_domain_id instead.
          * Moreover, these aren't working... @TODO */
-        flush_tlb_kernel_page(stack);
-        flush_tlb_kernel_page(stack + PAGE_SIZE);
+        //flush_tlb_kernel_page(stack);
+        //flush_tlb_kernel_page(stack + PAGE_SIZE);
     } else {
         // alternative mode to walk page tables
         unsigned int* section_base_addr;

@@ -51,51 +51,8 @@ extern void change_all_ids(unsigned int id);
 extern void change_kernel_domain(void);
 #endif
 
-static void switch_dacr_to_module(struct sync_args *sync) {
-    /*
-     * Changing thread cpu_domain
-     * i.e. the DACR the kernel use while running this thread
-     */
-    size_t new_dacr;
-    struct thread_info *info = current_thread_info();
-    new_dacr = domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER) |
-            domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
-            domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) |  /* virtual kernel
-                                                          * must be closed.*/
-            domain_val(DOMAIN_IO, DOMAIN_CLIENT) |
-            domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER);
-
-    dbg_pr("New DACR value to be set: 0x%x. Module domain id: %i\n", new_dacr,
-        DOMAIN_EXTENSION);
-
-    /*******************************
-    *** !!!NEED TO BE CAREFUL!!! ***
-    ** This instruction shouldn't **
-    ** stay as is here. Know how  **
-    ** to correct it though.      **
-    *(Pointer with fix DACR values)*
-    *******************************/
-#ifdef DEBUG
-    walk_registers();
-#endif
-
-    //change_kernel_domain();
-    //asm volatile ("" ::: "memory"); /* barrier */
-    //local_flush_tlb_all();
-    //flush_cache_all();
-    //asm volatile ("" ::: "memory"); /* barrier */
-
-    info->cpu_domain = new_dacr;
-
-    //write_dacr(new_dacr);
-    //exit_gate();
-
-    // Why calling printk doesn't trigger bug?
-    //printk("printk addr: %p\n", printk);
-    //change_stack_back(20, (unsigned int) printk);
-}
-
 void wake_calling_thread(struct sync_args *sync) {
+    entry_gate();
 #ifdef CONFIG_DIK_USE_THREAD
     *(sync->event) = true;
     wake_up_interruptible(sync->wq);
@@ -181,7 +138,7 @@ static int call_initfunc(void * data) {
     args = (struct initcall_args*) data;
     fn = args->fn;
 
-    switch_dacr_to_module(args->sync);
+    exit_gate();
     args->ret = fn();
 
     wake_calling_thread(args->sync);
@@ -221,7 +178,8 @@ static int call_exitfunc(void *data) {
     dbg_pr("*********** CALL_EXITFUNC ***********\n");
     args = (struct exitcall_args*) data;
     fn = args->fn;
-    switch_dacr_to_module(args->sync);
+
+    exit_gate();
     fn();
     
     wake_calling_thread(args->sync);
@@ -244,7 +202,7 @@ static void thread_exitfunc(void (*fn) (void)) {
 
 /***************** factorizing wrapper code ***************/
 static void pre_call(void){
-    write_dacr(KERNEL_DACR);
+    entry_gate();
 }
 
 static void post_call(void) {
