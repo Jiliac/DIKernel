@@ -30,6 +30,21 @@
         : :                     \
         : : label)
 
+#define entry_gate(label)   GATE(ENTRY_DACR, label)
+//#define exit_gate(label)    GATE(EXIT_DACR, label)
+
+/***********************************************************************
+ ** As define there, entry_gate and exit_gate have a major problem.   **
+ ** Attacker can jump to MCR instruction with a crafted return addr.  **
+ ** So it is possible to gain control of the system with the base     **
+ ** domain open.                                                      **
+ ***********************************************************************
+ ** This consideration is important for the entry_gate but not for    ** 
+ ** the exit gate though. Because we consider everything after it to  **
+ ** to be untrusted anyway.                                           **
+************************************************************************
+
+
 void entry_gate(void) {
     GATE(ENTRY_DACR, entry_label);
     return;
@@ -37,6 +52,8 @@ void entry_gate(void) {
 entry_label:
     entry_gate();
 }
+
+*/
 
 void exit_gate(void) {
     int reg;
@@ -52,4 +69,5 @@ void exit_gate(void) {
 exit_label:
     exit_gate();
 }
+
 #endif

@@ -52,12 +52,18 @@ extern void change_kernel_domain(void);
 #endif
 
 void wake_calling_thread(struct sync_args *sync) {
-    entry_gate();
+    entry_gate(wake_label);
+    //GATE(ENTRY_DACR, wake_label);
 #ifdef CONFIG_DIK_USE_THREAD
     *(sync->event) = true;
     wake_up_interruptible(sync->wq);
     do_exit(0);
+#else
+    // Security not ensure in the case because return address can be abused.
+    return;
 #endif
+wake_label:
+    wake_calling_thread(sync);
 }
 
 void thread_and_sync(int (*threadfn)(void *data), void *data,
@@ -201,10 +207,6 @@ static void thread_exitfunc(void (*fn) (void)) {
 }
 
 /***************** factorizing wrapper code ***************/
-static void pre_call(void){
-    entry_gate();
-}
-
 static void post_call(void) {
     exit_gate();
     dbg_pr("After the exit gate, changing DACR to 0x30df to trigger bug.\n");
@@ -215,21 +217,26 @@ static void post_call(void) {
 
 void * wrapper___kmalloc(size_t size, gfp_t gfp) {
     void * ret;
-    pre_call();
+    entry_gate(wrapper___kmalloc_label);
     dbg_pr("Calling __kmalloc, but through a wrapper.\n");
     ret = __kmalloc(size, gfp);
     dbg_pr("Called __kmalloc through a wrapper.\n");
     post_call();
     return ret;
+wrapper___kmalloc_label:
+    return wrapper___kmalloc(size, gfp);
 }
 EXPORT_SYMBOL(wrapper___kmalloc);
 
 extern void __aeabi_unwind_cpp_pr1(void);
 void wrapper___aeabi_unwind_cpp_pr1(void) {
-    pre_call();
+    entry_gate(wrapper___aeabi_unwind_cpp_pr1_label);
     dbg_pr("Calling __aeabi_unwind_cpp_pr1 through a wrapper.\n");
     __aeabi_unwind_cpp_pr1();
     post_call();
+    return;
+wrapper___aeabi_unwind_cpp_pr1_label:
+    wrapper___aeabi_unwind_cpp_pr1();
 }
 EXPORT_SYMBOL(wrapper___aeabi_unwind_cpp_pr1);
 
