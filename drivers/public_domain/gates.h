@@ -5,8 +5,6 @@
 #include <linux/dik/domain.h>
 #include <asm/domain.h>
 
-//#define ENTRY_DACR   0x555555dc 
-//#define EXIT_DACR   0x555555dc 
 #define EXIT_DACR \
     (domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER) |  \
      domain_val(DOMAIN_USER, DOMAIN_MANAGER) |   \
@@ -15,31 +13,43 @@
      domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER))
 #define ENTRY_DACR   (KERNEL_DACR)
 
+#define     INT_WIDE(nb)    (nb & 0xffff)
+#define     INT_TOP(nb)     ((nb >> 16) & 0xffff)
+
+#define QUOTE(name) #name
+#define STR(macro) QUOTE(macro)
+#define GATE(DACR_VALUE, label) \
+    asm volatile goto(          \
+        "movw    r6, #" STR(INT_WIDE(DACR_VALUE)) "\n\t"    \
+        "movt    r6, #" STR(INT_TOP(DACR_VALUE)) "\n\t"     \
+        "MCR     p15, 0, r6, c3, c0, 0\n\t"                 \
+        "movw    r7, #" STR(INT_WIDE(DACR_VALUE)) "\n\t"    \
+        "movt    r7, #" STR(INT_TOP(DACR_VALUE)) "\n\t"     \
+        "cmp     r6, r7\n\t"    \
+        "bne     %l0"           \
+        : :                     \
+        : : label)
 
 void entry_gate(void) {
-    int reg;
-    do {
-        asm volatile("mov r6, %0" :: "r" (ENTRY_DACR));
-        asm volatile("MCR p15, 0, r6, c3, c0, 0" ::);
-        asm volatile("mov %0, r6" : "=r" (reg):);
-    } while(reg != ENTRY_DACR);
-    dbg_pr("entry_gate: r6 (that has been loaded in dacr): %x", reg);
-    asm volatile("MRC p15, 0, %0, c3, c0, 0" : "=r" (reg) :);
-    dbg_pr(" - DACR value: %x\n", reg);
+    GATE(ENTRY_DACR, entry_label);
+    return;
+
+entry_label:
+    entry_gate();
 }
 
 void exit_gate(void) {
     int reg;
     dbg_pr("Loading EXIT value in DACR: 0x%x.\n", EXIT_DACR);
-    do {
-        asm volatile("mov r6, %0" :: "r" (EXIT_DACR));
-        asm volatile("MCR p15, 0, r6, c3, c0, 0" ::);
-        asm volatile("mov %0, r6" : "=r" (reg):);
-    } while(reg != EXIT_DACR);
-    /* Be careful, these prints won't work once the base kernel is closed.
-     */
-    dbg_pr("exit_gate: r6 (that has been loaded in dacr): %x", reg);
+
+    GATE(EXIT_DACR, exit_label);
+
     asm volatile("MRC p15, 0, %0, c3, c0, 0" : "=r" (reg) :);
-    dbg_pr(" - DACR value: %x\n", reg);
+    dbg_pr("Current value in DACR: 0x%x\n", reg);
+
+    return;
+
+exit_label:
+    exit_gate();
 }
 #endif
