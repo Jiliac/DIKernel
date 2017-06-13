@@ -20,17 +20,25 @@
 #define STR(macro) QUOTE(macro)
 #define GATE(DACR_VALUE, label) \
     asm volatile goto(          \
-        "movw    r6, #" STR(INT_WIDE(DACR_VALUE)) "\n\t"    \
-        "movt    r6, #" STR(INT_TOP(DACR_VALUE)) "\n\t"     \
-        "MCR     p15, 0, r6, c3, c0, 0\n\t"                 \
-        "movw    r7, #" STR(INT_WIDE(DACR_VALUE)) "\n\t"    \
-        "movt    r7, #" STR(INT_TOP(DACR_VALUE)) "\n\t"     \
-        "cmp     r6, r7\n\t"    \
+        "push    {r8, r9}\n\t"  \
+        "movw    r8, #" STR(INT_WIDE(DACR_VALUE)) "\n\t"    \
+        "movt    r8, #" STR(INT_TOP(DACR_VALUE)) "\n\t"     \
+        "MCR     p15, 0, r8, c3, c0, 0\n\t"                 \
+        "movw    r9, #" STR(INT_WIDE(DACR_VALUE)) "\n\t"    \
+        "movt    r9, #" STR(INT_TOP(DACR_VALUE)) "\n\t"     \
+        "cmp     r8, r9\n\t"    \
+        "pop     {r8, r9}\n\t"  \
         "bne     %l0"           \
         : :                     \
         : : label)
 
+
+/* Modify the cpu_domain field in the thread_info structure?
+ * For scheduling handling. But wouldn't really work because it implies the base
+ * kernel would have to close itself at some point.
+ */
 #define entry_gate(label)   GATE(ENTRY_DACR, label)
+
 //#define exit_gate(label)    GATE(EXIT_DACR, label)
 
 /***********************************************************************
@@ -42,18 +50,7 @@
  ** This consideration is important for the entry_gate but not for    ** 
  ** the exit gate though. Because we consider everything after it to  **
  ** to be untrusted anyway.                                           **
-************************************************************************
-
-
-void entry_gate(void) {
-    GATE(ENTRY_DACR, entry_label);
-    return;
-
-entry_label:
-    entry_gate();
-}
-
-*/
+ **********************************************************************/
 
 void exit_gate(void) {
     int reg;

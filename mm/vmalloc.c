@@ -703,7 +703,7 @@ static void free_unmap_vmap_area(struct vmap_area *va)
 	free_unmap_vmap_area_noflush(va);
 }
 
-struct vmap_area *find_vmap_area(unsigned long addr)
+static struct vmap_area *find_vmap_area(unsigned long addr)
 {
 	struct vmap_area *va;
 

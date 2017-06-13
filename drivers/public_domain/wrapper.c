@@ -51,20 +51,17 @@ extern void change_all_ids(unsigned int id);
 extern void change_kernel_domain(void);
 #endif
 
-void wake_calling_thread(struct sync_args *sync) {
-    entry_gate(wake_label);
-    //GATE(ENTRY_DACR, wake_label);
+static inline void wake_thread(struct sync_args *sync) {
 #ifdef CONFIG_DIK_USE_THREAD
     *(sync->event) = true;
     wake_up_interruptible(sync->wq);
     do_exit(0);
 #else
-    // Security not ensure in the case because return address can be abused.
+    // Security not ensured in this case because return address can be abused.
     return;
 #endif
-wake_label:
-    wake_calling_thread(sync);
 }
+
 
 void thread_and_sync(int (*threadfn)(void *data), void *data,
     const char *namefmt, struct sync_args *sync)
@@ -76,17 +73,10 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
     struct task_struct *task;
     sync->wq = &wq;
     sync->event = &event;
-#endif
 
-#ifdef CONFIG_DIK_USE_THREAD
     dbg_pr("Using thread for extensions.\n");
     task = kthread_create(threadfn, data, namefmt);
     
-    /* 
-     * Changing stack domain ID
-     * & Enforce this change by TLB flush??? if we do that all the time it's
-     * VERY long!
-     */
     stack = set_task_stack_domain_id(DOMAIN_EXTENSION, task);
 
     wake_up_process(task);
@@ -115,17 +105,6 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
 
 #include<linux/init.h>
 
-/*
- * - Create k thread (this includes domain management).
- * - Sleep until waiting queue completion
- */
-
-/* one more function needed.
- * - One to create thread.
- * - One to be called first by the thread and get the return value
- *      in the (*void data) pointer.
- */
-
 struct initcall_args {
     // these two are specific to each wrapper
     initcall_t fn;
@@ -135,19 +114,31 @@ struct initcall_args {
     struct sync_args *sync;
 };
 
+static void wakeinit_thread(struct sync_args *sync, int local_ret, int *ret) {
+    entry_gate(wakeinit_label);
+    /* sync->wq and ret are in the previous stack. */
+    *ret = local_ret;
+    wake_thread(sync);
+wakeinit_label:
+    wakeinit_thread(sync, local_ret, ret);
+}
+
 static int call_initfunc(void * data) {
     struct initcall_args *args;
     initcall_t fn;
+    int local_ret;
+    int * ret; // return value on previous stack
 
     dbg_pr("*********** CALL_INITFUNC ***********\n");
 
     args = (struct initcall_args*) data;
     fn = args->fn;
+    ret = &(args->ret);
 
     exit_gate();
-    args->ret = fn();
+    local_ret = fn();
 
-    wake_calling_thread(args->sync);
+    wakeinit_thread(args->sync, local_ret, ret);
     return 0;
 }
 
@@ -177,6 +168,17 @@ struct exitcall_args {
     struct sync_args *sync;
 };
 
+/* Not necessary to have an extra function as in the init case, since there are
+ * no return argument to be copied.
+ * Just to have a similar code.
+ */
+static void wakeexit_thread(struct sync_args *sync) {
+    entry_gate(wakeexit_label);
+    wake_thread(sync); 
+wakeexit_label:
+    wakeexit_thread(sync);
+}
+
 static int call_exitfunc(void *data) {
     struct exitcall_args *args;
     void (*fn) (void);
@@ -188,7 +190,7 @@ static int call_exitfunc(void *data) {
     exit_gate();
     fn();
     
-    wake_calling_thread(args->sync);
+    wakeexit_thread(args->sync);
     return 0;
 }
 
