@@ -5,12 +5,21 @@
 #include <linux/dik/domain.h>
 #include <asm/domain.h>
 
+     /*domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \*/
+#ifdef CONFIG_DIK_USE_THREAD
 #define EXIT_DACR \
-    (domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER) |  \
-     domain_val(DOMAIN_USER, DOMAIN_MANAGER) |   \
+    (domain_val(DOMAIN_USER, DOMAIN_MANAGER) |   \
+     domain_val(DOMAIN_IO, DOMAIN_CLIENT) |      \
+     domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER) | \
+     domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER))
+#else
+#define EXIT_DACR \
+    (domain_val(DOMAIN_USER, DOMAIN_MANAGER) |   \
      domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \
      domain_val(DOMAIN_IO, DOMAIN_CLIENT) |      \
-     domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER))
+     domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER) | \
+     domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER))
+#endif
 #define ENTRY_DACR   (KERNEL_DACR)
 
 #define     INT_WIDE(nb)    (nb & 0xffff)
@@ -53,13 +62,9 @@
  **********************************************************************/
 
 void exit_gate(void) {
-    int reg;
     dbg_pr("Loading EXIT value in DACR: 0x%x.\n", EXIT_DACR);
 
     GATE(EXIT_DACR, exit_label);
-
-    asm volatile("MRC p15, 0, %0, c3, c0, 0" : "=r" (reg) :);
-    dbg_pr("Current value in DACR: 0x%x\n", reg);
 
     return;
 

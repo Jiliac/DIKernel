@@ -1,8 +1,8 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/kthread.h>  // for kthreads
-#include <linux/wait.h>
 #include <linux/dik/myprint.h>
+#include "gates.h"
 
 MODULE_LICENSE("GPL");
 
@@ -11,9 +11,8 @@ MODULE_LICENSE("GPL");
 /************************************************************************/
 #include <linux/dik/stack.h>    // print stack pointer
 #include <linux/dik/thread.h>   // read_current_task_ids
-#include <linux/dik/domain.h>   // DOMAIN_PUBLIC
+#include <linux/dik/domain.h>   // DOMAIN_PUBLIC and addr_get_domain
 #include <linux/dik/dacr.h>     // write_dacr and read_dacr macros
-#include <asm/domain.h>         // for the macros
 #include <asm/thread_info.h>    // for the macros (current_thread_info)
 
 /******* Debug Function *********/
@@ -31,6 +30,14 @@ MODULE_LICENSE("GPL");
         dbg_pr("Current Program Counter (PC): 0x%8x.\n", reg);  \
         change_stack_back(20, reg);                             \
     } while(0)
+static void open_close(unsigned n) {
+    write_dacr(0x5555555f);
+    dbg_pr("We are here at bug point %d.\n", n);
+    write_dacr(EXIT_DACR);
+}
+#else
+#define walk_registers()
+static void open_close(unsigned n) {}
 #endif
 /********************************/
 
@@ -41,20 +48,24 @@ struct sync_args {
 #endif
 };
 
-#include <asm/tlbflush.h>       // not sure needed to vlush here. For test
-#include <asm/cacheflush.h>
-#include "gates.h"
-
 #ifdef CONFIG_VIRTUAL_BK_DID
 // To Remove code. Let it in case this hypothesis if true in the end.
 extern void change_all_ids(unsigned int id);
 extern void change_kernel_domain(void);
 #endif
 
-static inline void wake_thread(struct sync_args *sync) {
+static inline void wake_thread(struct sync_args *sync, unsigned int args_addr) {
 #ifdef CONFIG_DIK_USE_THREAD
-    *(sync->event) = true;
-    wake_up_interruptible(sync->wq);
+    size_t domain = addr_domain_id(args_addr);
+    dbg_pr("wake_thread: Domain of %p is %d.\n", sync, domain);
+    if(domain == 0 
+        // Problem because so far, all stacks in the same domain.
+        || domain == DOMAIN_EXTENSION) {
+        *(sync->event) = true;
+        wake_up_interruptible(sync->wq);
+    } else {
+        exit_gate();
+    }
     do_exit(0);
 #else
     // Security not ensured in this case because return address can be abused.
@@ -63,7 +74,7 @@ static inline void wake_thread(struct sync_args *sync) {
 }
 
 
-void thread_and_sync(int (*threadfn)(void *data), void *data,
+static void thread_and_sync(int (*threadfn)(void *data), void *data,
     const char *namefmt, struct sync_args *sync)
 {
 #ifdef CONFIG_DIK_USE_THREAD
@@ -95,6 +106,7 @@ void thread_and_sync(int (*threadfn)(void *data), void *data,
      * domain back or doesn't mistakenly allocate stuff there that isn't
      * supposed to be in this domain. 
      */
+    dbg_pr("call change_stack_back for emulation environment(?)\n");
     change_stack_back(DOMAIN_KERNEL, stack);
 #else
     threadfn(data);
@@ -114,13 +126,17 @@ struct initcall_args {
     struct sync_args *sync;
 };
 
-static void wakeinit_thread(struct sync_args *sync, int local_ret, int *ret) {
+static void wakeinit_thread(struct initcall_args *args, int local_ret, int *ret) {
+    open_close(3);
     entry_gate(wakeinit_label);
-    /* sync->wq and ret are in the previous stack. */
+    dbg_pr("Post entry gate \\o/ !\n");
     *ret = local_ret;
-    wake_thread(sync);
+    wake_thread(args->sync, (unsigned int) args);
+#ifndef CONFIG_DIK_USE_THREAD
+    return;
+#endif
 wakeinit_label:
-    wakeinit_thread(sync, local_ret, ret);
+    wakeinit_thread(args, local_ret, ret);
 }
 
 static int call_initfunc(void * data) {
@@ -130,15 +146,18 @@ static int call_initfunc(void * data) {
     int * ret; // return value on previous stack
 
     dbg_pr("*********** CALL_INITFUNC ***********\n");
+    walk_registers();
 
     args = (struct initcall_args*) data;
     fn = args->fn;
     ret = &(args->ret);
 
     exit_gate();
+    open_close(1);
     local_ret = fn();
+    open_close(2);
 
-    wakeinit_thread(args->sync, local_ret, ret);
+    wakeinit_thread(args, local_ret, ret);
     return 0;
 }
 
@@ -152,10 +171,6 @@ static int thread_initfunc(initcall_t fn) {
     args.fn = fn;
     args.sync = &sync;
     data = (void*) &args;
-
-#ifdef DEBUG
-    walk_registers();
-#endif
 
     thread_and_sync(call_initfunc, data, "call_initfunc", &sync);
 
@@ -172,11 +187,11 @@ struct exitcall_args {
  * no return argument to be copied.
  * Just to have a similar code.
  */
-static void wakeexit_thread(struct sync_args *sync) {
+static void wakeexit_thread(struct exitcall_args *args) {
     entry_gate(wakeexit_label);
-    wake_thread(sync); 
+    wake_thread(args->sync, (unsigned int) args); 
 wakeexit_label:
-    wakeexit_thread(sync);
+    wakeexit_thread(args);
 }
 
 static int call_exitfunc(void *data) {
@@ -184,13 +199,15 @@ static int call_exitfunc(void *data) {
     void (*fn) (void);
 
     dbg_pr("*********** CALL_EXITFUNC ***********\n");
+    walk_registers();
+
     args = (struct exitcall_args*) data;
     fn = args->fn;
 
     exit_gate();
     fn();
     
-    wakeexit_thread(args->sync);
+    wakeexit_thread(args);
     return 0;
 }
 

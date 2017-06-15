@@ -5,3 +5,4 @@
 #define DOMAIN_KERNEL_VIRTUAL   5
 
 void module_change_domain(struct module *mod);
+extern size_t addr_domain_id(unsigned int addr);

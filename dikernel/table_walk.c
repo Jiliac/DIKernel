@@ -1,4 +1,3 @@
-#include <linux/sched.h>    // for init_mm
 #include "table_walk.h"
 #include <linux/dik/dacr.h>
 #include <linux/dik/domain.h>
@@ -40,10 +39,14 @@ unsigned int get_pmd_bit(unsigned long addr) {
 #define     FIRST_LVL_SIZE  (1UL << FIRST_LVL_SHIFT)
 #define     FIRST_LVL_MASK  (FIRST_LVL_SIZE-1)
 unsigned int* get_first_lvl(unsigned int addr) {
+    unsigned int ttbr0, miscellanious;
     unsigned int *pgd;
     unsigned int *first_lvl_descriptor_addr;
 
-    pgd = (unsigned int*) (init_mm.pgd);
+    asm volatile("MRRC p15, 0, %0, %1, c2" : "=r" (ttbr0), 
+        "=r" (miscellanious) : );
+    pgd = (unsigned int*) ((ttbr0 & 0xfffff000) + PAGE_OFFSET);
+
     first_lvl_descriptor_addr = pgd + ((addr & 0xfff00000) >> FIRST_LVL_SHIFT);
     dbg_pr("addr: 0x%x, pgd: %p, first_lvl_descriptor_addr: %p.\n",
             addr, pgd, first_lvl_descriptor_addr);
@@ -67,6 +70,8 @@ void change_domain_id(unsigned int addr, size_t domain_id, unsigned int size) {
     dbg_pr("change_domain_id: addr 0x%x covers %d different PDE(s).\n",
         addr, first_lvl_max_index);
 }
+// Used in drivers/public_domain/daehee_test.c. To be Removed. @TODO
+EXPORT_SYMBOL(change_domain_id);
 
 /***************** test on first level descriptor modification **************/
 void corrupt_pt(unsigned int addr) {

@@ -617,10 +617,10 @@ config DIK_EVA
         To add some prints in logs to measure the performance loss DIK causes
 
 config DIK_USE_THREAD
-    bool "Turn on DIKernel thread usage"
+    bool "Turn on DIKernel thread usage. Break security if not used."
     depends on DIK_USE
     help
-       For DIKernel to use threads to run extension 
+       For DIKernel to use threads to run extension. Break security if not used. 
 
 #
 # CPU supports 36-bit I/O

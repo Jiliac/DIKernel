@@ -83,12 +83,7 @@ asmlinkage long sys_dikcall(void) {
         pt_dummy = kmalloc(ALLOC_SIZE, GFP_KERNEL);
     if(!pt_dacr)
         pt_dacr = kmalloc(ALLOC_SIZE, GFP_KERNEL);
-    //printk("kmallocing and putting it in an open domain\n");
     dacr_poc(DOMAIN_NOACCESS);
-    //printk("kmallocing and putting it in a close domain\n");
-    //dacr_poc(DOMAIN_NOACCESS);
-    //printk("\ntest end.\n-----------------\n\n");
-
 
     //dump();   // Dump page tables
     return 0;
