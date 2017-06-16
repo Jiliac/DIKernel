@@ -512,12 +512,12 @@ do_bad(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 }
 
 static int
-do_page_dom_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
+do_dom_fault(unsigned long addr, unsigned int fsr, struct pt_regs *regs)
 {
-    unsigned int dom = (fsr >> 4) & 0xffff;
+    unsigned int dom = (fsr >> 4) & 0xf;
     unsigned int dacr;
     asm volatile("MRC p15, 0, %0, c3, c0, 0" : "=r" (dacr) :);
-    pr_alert("Page Domain Fault in domain %d - current DACR value 0x%x.\n", dom, dacr);
+    pr_alert("Domain Fault in domain %d - current DACR value 0x%x.\n", dom, dacr);
     return 1;
 }
 

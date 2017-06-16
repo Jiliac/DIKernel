@@ -37,54 +37,65 @@ void kthread_run_test(void) {
 }
 
 /********************** DACR PoC ***********************/
+#include <linux/dik/thread.h>   // read_current_task_ids
+#define walk_registers()                                        \
+    do {                                                        \
+        size_t reg;                                             \
+        /*** for stack pointer ***/                             \
+        asm volatile("mov %0, r13" : "=r" (reg) :);             \
+        dbg_pr("Current Stack Pointer (SP): 0x%8x.\n", reg);    \
+        change_stack_back(20, reg);                             \
+                                                                \
+        /*** for programm counter ***/                          \
+        asm volatile("mov %0, r15" : "=r" (reg) :);             \
+        dbg_pr("Current Program Counter (PC): 0x%8x.\n", reg);  \
+        change_stack_back(20, reg);                             \
+    } while(0)
+
 #define ALLOC_SIZE (1 << 18)
 #define DOMAIN 8
 int * pt_dacr = NULL;
-int * pt_dummy = NULL;
-int * pt_corrupt = NULL;
 void dacr_poc(unsigned domain_right) {
     int i;
-    size_t new_dacr, current_dacr;
+    size_t new_dacr, old_dacr;
 
-    if(!pt_dacr || !pt_dummy || !pt_corrupt) {
+    if(!pt_dacr) {
         printk("Allocation failed.\n");
         return;
     }
 
-    corrupt_pt((unsigned int) pt_corrupt);
-    corrupt_pt((unsigned int) pt_corrupt + ALLOC_SIZE);
-    // from dikernel/table_walk.c function
     change_domain_id((unsigned int) pt_dacr, DOMAIN, ALLOC_SIZE);
 
     new_dacr = domain_val(DOMAIN, domain_right) |
         domain_val(DOMAIN_USER, DOMAIN_MANAGER) |
         domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | 
-        domain_val(DOMAIN_IO, DOMAIN_CLIENT);
+        domain_val(DOMAIN_IO, DOMAIN_CLIENT)    |
+        domain_val(12,  DOMAIN_CLIENT);
 
+    walk_registers();
+    
+    read_dacr(old_dacr);
+    printk("current dacr: 0x%x, new one: 0x%x.\n", old_dacr, new_dacr);
+    write_dacr(new_dacr);
+    asm volatile("push {r0}\n\tpop {r0}");
+    write_dacr(old_dacr);
+    printk("Closed domain %d and opened it again.\n", DOMAIN);
     write_dacr(new_dacr);
     isb();
-    read_dacr(current_dacr);
-    printk("current dacr: 0x%x.\n", current_dacr);
 
-    msleep(5000);
     for(i=1; i<ALLOC_SIZE/sizeof(int); i=i+10000)
         pt_dacr[i] = 42;
-    printk("DACR didn't trigger bug, seeing if corruption does.\n");
-    for(i=1; i<ALLOC_SIZE/sizeof(int); i=i+10000)
-        pt_corrupt[i] = 42;
+    write_dacr(old_dacr);
+    printk("Reached the end of dacr_poc?\n");
 }
 
 /******************** System Call *********************/
 #include <asm/domain.h>
 asmlinkage long sys_dikcall(void) {
-    if(!pt_corrupt)
-        pt_corrupt = kmalloc(ALLOC_SIZE, GFP_KERNEL);
-    if(!pt_dummy)   // dummy so that pt_corrupt pt_dacr don't have common section
-        pt_dummy = kmalloc(ALLOC_SIZE, GFP_KERNEL);
     if(!pt_dacr)
-        pt_dacr = kmalloc(ALLOC_SIZE, GFP_KERNEL);
+        pt_dacr = vmalloc(ALLOC_SIZE/*, GFP_KERNEL*/);
+        // use vmalloc because kmalloc allocates just next to the used stack.
     dacr_poc(DOMAIN_NOACCESS);
 
-    //dump();   // Dump page tables
     return 0;
 }
