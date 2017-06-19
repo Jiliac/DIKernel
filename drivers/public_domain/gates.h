@@ -2,6 +2,7 @@
 #define __FIX_DACR__
 
 #include <linux/dik/myprint.h>
+#include <linux/dik/interrupt.h>
 #include <linux/dik/domain.h>
 #include <asm/domain.h>
 
@@ -38,15 +39,17 @@
         "cmp     r8, r9\n\t"    \
         "pop     {r8, r9}\n\t"  \
         "bne     %l0"           \
-        : :                     \
-        : : label)
+        :::: label);
 
 
 /* Modify the cpu_domain field in the thread_info structure?
  * For scheduling handling. But wouldn't really work because it implies the base
  * kernel would have to close itself at some point.
  */
-#define entry_gate(label)   GATE(ENTRY_DACR, label)
+#define entry_gate(label)       \
+    GATE(ENTRY_DACR, label);    \
+    reenable_interrupt();       \
+    isb();
 
 //#define exit_gate(label)    GATE(EXIT_DACR, label)
 
@@ -64,7 +67,9 @@
 void exit_gate(void) {
     dbg_pr("Loading EXIT value in DACR: 0x%x.\n", EXIT_DACR);
 
+    disable_interrupt();
     GATE(EXIT_DACR, exit_label);
+    isb();
 
     return;
 
