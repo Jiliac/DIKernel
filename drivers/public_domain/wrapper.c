@@ -24,12 +24,21 @@ MODULE_LICENSE("GPL");
         asm volatile("mov %0, r13" : "=r" (reg) :);             \
         dbg_pr("Current Stack Pointer (SP): 0x%8x.\n", reg);    \
         change_stack_back(20, reg);                             \
-                                                                \
+        \
         /*** for programm counter ***/                          \
         asm volatile("mov %0, r15" : "=r" (reg) :);             \
         dbg_pr("Current Program Counter (PC): 0x%8x.\n", reg);  \
         change_stack_back(20, reg);                             \
     } while(0)
+extern void
+change_domain_id(unsigned int addr, size_t domain_id, unsigned int size);
+static void change_reg_ids(void) {
+    size_t sp, pc;
+    asm volatile("mov %0, r13" : "=r" (sp) :);
+    asm volatile("mov %0, r15" : "=r" (pc) :);
+    change_domain_id((unsigned int) sp, DOMAIN_EXTENSION, 0);
+    change_domain_id((unsigned int) pc, DOMAIN_EXTENSION, 0);
+}
 static void open_close(unsigned n) {
     write_dacr(0x5555555f);
     dbg_pr("We are here at bug point %d.\n", n);
@@ -37,6 +46,7 @@ static void open_close(unsigned n) {
 }
 #else
 #define walk_registers()
+static void change_reg_ids(void) {}
 static void open_close(unsigned n) {}
 #endif
 /********************************/
@@ -146,6 +156,8 @@ static int call_initfunc(void * data) {
     int * ret; // return value on previous stack
 
     dbg_pr("*********** CALL_INITFUNC ***********\n");
+    walk_registers();
+    change_reg_ids();
     walk_registers();
 
     args = (struct initcall_args*) data;

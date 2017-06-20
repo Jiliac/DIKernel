@@ -58,5 +58,5 @@ void modify_domain_id(unsigned int * descriptor, unsigned int id) {
     dbg_pr("descriptor: 0x%x - current domain id: %d - new domain id: %i.\n",
         desc_content, domain_id, id);
     set_domain_id(descriptor, id);
-    dbg_pr("modified descriptor: 0x%x.\n", desc_content);
+    dbg_pr("modified descriptor: 0x%x.\n", *descriptor);
 }

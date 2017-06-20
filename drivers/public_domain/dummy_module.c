@@ -17,11 +17,14 @@ static int dummy_init(void) {
     j = i+1;
     i = j;
 
-    return 0;
+    if(!j)
+        return j;
+    else
+        return 0;
 }
 
 static void dummy_exit(void) {
-    dbg_pr("Bye everyone. Dummy module is leaving :(.\n");
+    //dbg_pr("Bye everyone. Dummy module is leaving :(.\n");
 }
 
 module_init(dummy_init);
