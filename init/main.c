@@ -1046,7 +1046,7 @@ static noinline void __init kernel_init_freeable(void)
 /* Placed in DIK syscall for debug
  */
 #ifdef CONFIG_DIK_USE
-    if(!request_module("domain_switcher"))
+    if(!request_module("wrapper"))
         setting_wrappers();
 #endif
 #ifdef CONFIG_DIK_EVA

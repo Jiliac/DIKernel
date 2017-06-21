@@ -33,22 +33,19 @@ void call_wrapper_exitcall(void (*fn) (void)) {
         wrapper_exitcall(fn);
 }
 
-/****************** switch to mod setup ***************/
+/*************** Symbols to wrap definition ***************/
 
-void (*switcher_to_mod) (void) = NULL;
-void register_switcher_to_mod(void * ptr) {
-    dbg_pr("dikernel/set_wrap.c: register_switcher_to_mod called.\n");
-    switcher_to_mod = ptr;
-}
-EXPORT_SYMBOL(register_switcher_to_mod);
+struct wrapper_info {
+    char * mod_name;
+    char * target_name;
+    char * sym_to_change;
+};
 
-void call_switcher_to_mod(void) {
-    switcher_to_mod();
-}
-
-int is_switcher_to_mod_registered(void) {
-    return (int) switcher_to_mod;
-}
+static struct wrapper_info wrapper_info[] = {
+    {WRAPPER_MODULE,    "__kmalloc",    "wrapper___kmalloc" },
+    {WRAPPER_MODULE,    "__aeabi_unwind_cpp_pr1",
+        "wrapper___aeabi_unwind_cpp_pr1"},
+};
 
 /********** setting wrapper and utility **************/
 
@@ -74,15 +71,19 @@ void modify_sym_in_mod(char * mod_name, char * target_name, char * sym_to_change
 int wrapper_set = 0;    // boolean value
 void setting_wrappers() {
     dbg_pr("!!!!!!!!!! setting_wrappers start !!!!!!!!!!\n");
-    wrapper_set = 1;    // WRAPPER_MODULE should be in DOMAIN_PUBLIC
-    if(!request_module(WRAPPER_MODULE)) {
+    if(!request_module(SWITCHER_MODULE)) {
+        wrapper_set = 1;    // WRAPPER_MODULE should be in DOMAIN_PUBLIC
+        unsigned i;
         dbg_pr("setting_wrapper: %s module loaded.\n", WRAPPER_MODULE);
+
         /* Here we should change the domain ID of the Public Domain.
-         * Not sure about stack, not sure it actually needs to be different.
          */
-        modify_sym_in_mod(WRAPPER_MODULE, "__kmalloc", "wrapper___kmalloc");
-        modify_sym_in_mod(WRAPPER_MODULE, "__aeabi_unwind_cpp_pr1",
-            "wrapper___aeabi_unwind_cpp_pr1");
+
+        for(i = 0; i < ARRAY_SIZE(wrapper_info); ++i) {
+            modify_sym_in_mod(wrapper_info[i].mod_name,
+                wrapper_info[i].target_name,
+                wrapper_info[i].sym_to_change);
+        }
     } else
         dbg_pr("Couldn't load %s module.\n", WRAPPER_MODULE);
     dbg_pr("!!!!!!!!!! setting_wrappers end !!!!!!!!!!\n");
