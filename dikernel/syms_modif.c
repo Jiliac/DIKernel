@@ -34,7 +34,7 @@ Elf_Sym * find_elf_sym(char * name, struct module * mod) {
 #endif /*CONFIG_KALLSYMS*/
 
 /****************************************************************************
-*************************** General Sym Modification ************************
+*************************** Code Symbol Modification ************************
 ****************************************************************************/
 
 void modify_symbol(char * target_name, unsigned long new_value) {

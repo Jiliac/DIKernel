@@ -12,33 +12,35 @@ static void post_call(void) {
     write_dacr(0x30df);
 }
 
-/****************** some symbol wrappers ******************/
+/****************** data symbol wrappers ******************/
+
+/****************** code symbol wrappers ******************/
 
 #include <linux/slab.h>
-void * wrapper___kmalloc(size_t size, gfp_t gfp) {
+void * wrapper__kmalloc(size_t size, gfp_t gfp) {
     void * ret;
-    entry_gate(wrapper___kmalloc_label);
+    entry_gate(wrapper__kmalloc_label);
     dbg_pr("Calling __kmalloc, but through a wrapper.\n");
     ret = __kmalloc(size, gfp);
     dbg_pr("Called __kmalloc through a wrapper.\n");
     post_call();
     return ret;
-wrapper___kmalloc_label:
-    return wrapper___kmalloc(size, gfp);
+wrapper__kmalloc_label:
+    return wrapper__kmalloc(size, gfp);
 }
-EXPORT_SYMBOL(wrapper___kmalloc);
+EXPORT_SYMBOL(wrapper__kmalloc);
 
 extern void __aeabi_unwind_cpp_pr1(void);
-void wrapper___aeabi_unwind_cpp_pr1(void) {
-    entry_gate(wrapper___aeabi_unwind_cpp_pr1_label);
+void wrapper__aeabi_unwind_cpp_pr1(void) {
+    entry_gate(wrapper__aeabi_unwind_cpp_pr1_label);
     dbg_pr("Calling __aeabi_unwind_cpp_pr1 through a wrapper.\n");
     __aeabi_unwind_cpp_pr1();
     post_call();
     return;
-wrapper___aeabi_unwind_cpp_pr1_label:
-    wrapper___aeabi_unwind_cpp_pr1();
+wrapper__aeabi_unwind_cpp_pr1_label:
+    wrapper__aeabi_unwind_cpp_pr1();
 }
-EXPORT_SYMBOL(wrapper___aeabi_unwind_cpp_pr1);
+EXPORT_SYMBOL(wrapper__aeabi_unwind_cpp_pr1);
 
 
 static int wrapper_init(void) {

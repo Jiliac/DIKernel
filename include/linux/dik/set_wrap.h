@@ -6,5 +6,6 @@
 int call_wrapper_initcall(initcall_t fn);
 void call_wrapper_exitcall(void (*fn) (void));
 
+void update_data_wrappers(void);
 void setting_wrappers(void);
 int get_wrapper_set(void);

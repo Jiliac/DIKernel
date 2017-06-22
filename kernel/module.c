@@ -850,9 +850,8 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
     pr_debug("kernel/module.c: about to call mod->exit if it exits.\n");
 	if (mod->exit != NULL)
 #ifdef CONFIG_DIK_USE
+        update_data_wrappers();
         call_wrapper_exitcall(mod->exit);
-        // Bug when on RasPi. @TODO
-        //mod->exit();
 #else
         mod->exit();
 #endif
@@ -3095,6 +3094,9 @@ static noinline int do_init_module(struct module *mod)
 	if (mod->init != NULL){
 #ifdef CONFIG_DIK_EVA
         printk("module insertion finished %s\n", mod->name);
+#endif
+#ifdef CONFIG_DIK_USE
+    update_data_wrappers();
 #endif
 		ret = do_one_initcall(mod->init);
 #ifdef CONFIG_DIK_EVA
