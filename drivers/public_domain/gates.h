@@ -10,6 +10,7 @@
 #ifdef CONFIG_DIK_USE_THREAD
 #define EXIT_DACR \
     (domain_val(DOMAIN_USER, DOMAIN_MANAGER) |   \
+     domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \
      domain_val(DOMAIN_IO, DOMAIN_CLIENT) |      \
      domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER) | \
      domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER))
@@ -46,9 +47,9 @@
  * For scheduling handling. But wouldn't really work because it implies the base
  * kernel would have to close itself at some point.
  */
+    /*reenable_interrupt();       \*/
 #define entry_gate(label)       \
     GATE(ENTRY_DACR, label);    \
-    reenable_interrupt();       \
     isb();
 
 //#define exit_gate(label)    GATE(EXIT_DACR, label)
@@ -67,7 +68,7 @@
 void exit_gate(void) {
     dbg_pr("Loading EXIT value in DACR: 0x%x.\n", EXIT_DACR);
 
-    disable_interrupt();
+    //disable_interrupt();
     GATE(EXIT_DACR, exit_label);
     isb();
 

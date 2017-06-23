@@ -17,6 +17,8 @@ static int dummy_init(void) {
     j = i+1;
     i = j;
 
+    dbg_pr("Hello from dummy_init.\n");
+
     if(!j)
         return j;
     else

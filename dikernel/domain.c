@@ -26,3 +26,14 @@ size_t addr_domain_id(unsigned int addr) {
     return domain;
 }
 EXPORT_SYMBOL(addr_domain_id);
+
+void change_domain_ext_ptr(void * ptr, unsigned int size) {
+    unsigned int addr = (unsigned int) ptr;
+    unsigned int *first_lvl_addr = get_first_lvl(addr);
+    unsigned int first_lvl = *first_lvl_addr;
+    size_t domain = get_domain_id(first_lvl);
+    if(domain != DOMAIN_EXTENSION) {
+        change_domain_id(addr, DOMAIN_EXTENSION, size);
+    }
+}
+EXPORT_SYMBOL(change_domain_ext_ptr);

@@ -11,7 +11,6 @@
 
 #include <linux/kthread.h>
 #include <linux/dik/thread.h>
-#include <linux/delay.h>        // for sleep
 int foo_kthread(void * data) {
     char * str = (char*) data;
     dbg_pr("foo_kthread: I hope this data was really a string: %s.\n", 
@@ -32,7 +31,6 @@ void kthread_run_test(void) {
 
     wake_up_process(task);
     read_thread_cpu_domain(task);
-    msleep(1000);
     read_thread_cpu_domain(task);
 }
 
@@ -91,11 +89,33 @@ void dacr_poc(unsigned domain_right) {
 
 /******************** System Call *********************/
 #include <asm/domain.h>
+#include <linux/dik/interrupt.h>
+
+#define BUF_SIZE    3000000
+static int table[BUF_SIZE];
+
+//extern struct kmem_cache *kmalloc_caches[KMALLOC_SHIFT_HIGH + 1];
+#include <linux/slab.h>
+
 asmlinkage long sys_dikcall(void) {
-    if(!pt_dacr)
-        pt_dacr = vmalloc(ALLOC_SIZE/*, GFP_KERNEL*/);
-        // use vmalloc because kmalloc allocates just next to the used stack.
-    dacr_poc(DOMAIN_NOACCESS);
+    if(1) {
+        unsigned i;
+        for(i=0; i<KMALLOC_SHIFT_HIGH + 1; ++i) {
+            dbg_pr("kmalloc_caches[%d] = %p.\n", i, kmalloc_caches[i]);
+        }
+    }
+
+    if(0) {
+        if(!pt_dacr)
+            pt_dacr = vmalloc(ALLOC_SIZE/*, GFP_KERNEL*/);
+            // use vmalloc because kmalloc allocates just next to the used stack.
+        dacr_poc(DOMAIN_NOACCESS);
+    }
+
+    if(0) {
+        disable_interrupt();
+        reenable_interrupt();
+    }
 
     return 0;
 }

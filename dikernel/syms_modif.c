@@ -43,8 +43,7 @@ void modify_symbol(char * target_name, unsigned long new_value) {
     sym = (struct kernel_symbol*) find_symbol(target_name, NULL, NULL,
             true, true);
     if(sym){
-        dbg_pr("dikcmd/syms_modif.c: We found %s symbol!\n",
-                target_name);
+        dbg_pr("and %s symbol!\n", target_name);
     }
     else{
         dbg_pr("dikcmd/syms_modif.c: didn't find %s symbol.\n",

@@ -41,9 +41,21 @@ struct code_wrapper {
 };
 
 static struct code_wrapper code_wrappers[] = {
-    {"__kmalloc",    "wrapper__kmalloc" },
-    {"__aeabi_unwind_cpp_pr1",
-        "wrapper__aeabi_unwind_cpp_pr1"},
+    {"__kmalloc",   "wrapper__kmalloc"  },
+    {"kfree",       "wrapper_kfree" },
+    {"kmem_cache_alloc",    "wrapper_kmem_cache_alloc"  },
+    {"__aeabi_unwind_cpp_pr0",      "wrapper__aeabi_unwind_cpp_pr0" },
+    {"__aeabi_unwind_cpp_pr1",      "wrapper__aeabi_unwind_cpp_pr1" },
+    {"vprintk",     "wrapper_vprintk"   },
+    {"printk",      "wrapper_printk"    },
+    {"__dev_printk",    "wrapper___dev_printk"  },
+    {"dev_err"  ,   "wrapper_dev_err"   },
+    {"platform_driver_unregister",  "wrapper_platform_driver_unregister"    },
+    {"__platform_driver_register",  "wrapper__platform_driver_register"     },
+    {"of_clk_src_simple_get",       "wrapper_of_clk_src_simple_get"     },
+    {"devm_clk_register",       "wrapper_devm_clk_register"     },
+    {"of_clk_add_provider",     "wrapper_of_clk_add_provider"   },
+    {"of_clk_del_provider", "wrapper_of_clk_del_provider"   },
 };
 
 struct data_wrapper {
@@ -96,8 +108,10 @@ void modify_sym_in_mod(struct module * mod, char * target_name, char * sym_to_ch
 
     if(mod) {
         sym = find_symbol(sym_to_change, &mod, NULL, true, true);
-        if(sym)
+        if(sym) {
+            dbg_pr("We found %s symbol ", sym_to_change);
             modify_symbol(target_name, sym->value);
+        }
         else
             dbg_pr("dik/wrapper.c:setting_wrappers couldn't find %s symbol to "
                     "modify.\n", sym_to_change);

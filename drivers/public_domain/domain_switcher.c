@@ -82,6 +82,11 @@ static inline void wake_thread(struct sync_args *sync, unsigned int args_addr) {
 #endif
 }
 
+#ifdef  CONFIG_DIK_THREAD_POOL
+struct task_struct * init_thread_pool;
+void * init_task_pool_data;
+static int call_initfunc(void * data);
+#endif
 
 static void thread_and_sync(int (*threadfn)(void *data), void *data,
     const char *namefmt, struct sync_args *sync)
@@ -95,11 +100,21 @@ static void thread_and_sync(int (*threadfn)(void *data), void *data,
     sync->event = &event;
 
     dbg_pr("Using thread for extensions.\n");
+#ifdef  CONFIG_DIK_THREAD_POOL
+    if(threadfn == call_initfunc) {
+        init_task_pool_data = data;
+        stack = set_task_stack_domain_id(DOMAIN_EXTENSION, init_thread_pool);
+        wake_up_process(init_thread_pool);
+    } else {
+        task = kthread_create(threadfn, data, namefmt);
+        stack = set_task_stack_domain_id(DOMAIN_EXTENSION, task);
+        wake_up_process(task);
+    }
+#else
     task = kthread_create(threadfn, data, namefmt);
-    
     stack = set_task_stack_domain_id(DOMAIN_EXTENSION, task);
-
     wake_up_process(task);
+#endif
 
     wait_event_interruptible(wq, event != 0);
     /*
@@ -140,6 +155,10 @@ static void wakeinit_thread(struct initcall_args *args, int local_ret, int *ret)
     entry_gate(wakeinit_label);
     dbg_pr("Post entry gate \\o/ !\n");
     *ret = local_ret;
+#ifdef  CONFIG_DIK_THREAD_POOL
+    init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
+        "init_task_pool");
+#endif
     wake_thread(args->sync, (unsigned int) args);
 #ifndef CONFIG_DIK_USE_THREAD
     return;
@@ -159,9 +178,14 @@ static int call_initfunc(void * data) {
     //change_reg_ids();
     //walk_registers();
 
+#ifdef  CONFIG_DIK_THREAD_POOL
+    data = init_task_pool_data;
+#endif
+    dbg_pr("call_initfunc args. data: %p, ", data);
     args = (struct initcall_args*) data;
     fn = args->fn;
     ret = &(args->ret);
+    dbg_pr("fn: %p and ret: %p.\n", fn, ret);
 
     exit_gate();
     open_close(1);
@@ -249,6 +273,10 @@ void register_switchers(void) {
 static int switcher_init(void) {
     pr_debug("domain_switcher module_init.\n");
     register_switchers();
+#ifdef  CONFIG_DIK_THREAD_POOL
+    init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
+        "init_task_pool");
+#endif
     return 0;
 }
 
