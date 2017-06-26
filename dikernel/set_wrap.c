@@ -58,44 +58,20 @@ static struct code_wrapper code_wrappers[] = {
     {"of_clk_del_provider", "wrapper_of_clk_del_provider"   },
 };
 
-struct data_wrapper {
-    char * target_name;
-    char * sym_to_change;
-    struct kernel_symbol * kernel_sym;
-    struct kernel_symbol * wrapper_sym;
-};
-
-static struct data_wrapper data_wrappers[] = {};
-
-/**************************** Wrapping Data Symbols ***************************/
-void data_wrappers_init(void) {
-    unsigned i;
-    struct kernel_symbol * kernel_sym;
-    struct kernel_symbol * wrapper_sym;
-    struct module * mod = NULL;
-
-    mod = find_module(WRAPPER_MODULE);
-    for(i=0; i < ARRAY_SIZE(data_wrappers); ++i) {    
-        kernel_sym = (struct kernel_symbol*) find_symbol(
-            data_wrappers[i].target_name, NULL, 
-            NULL, true, true);
-        wrapper_sym = (struct kernel_symbol*) find_symbol(
-            data_wrappers[i].sym_to_change, &mod,
-            NULL, true, true);
-        if(kernel_sym && wrapper_sym) {
-            dbg_pr("Symbol value in kernel: %lx, and in wrapper: %lx.\n", 
-                kernel_sym->value, wrapper_sym->value);
-            data_wrappers[i].kernel_sym = kernel_sym;
-            data_wrappers[i].wrapper_sym = wrapper_sym;
-            kernel_sym->value = wrapper_sym->value;
-        } else {
-            dbg_pr("Couldn't find %s symbol.\n", data_wrappers[i].target_name);
-        }
+/**************************** Data Symbol Wrapper *****************************/
+void modify_data_sym(char * data_sym_name, unsigned long new_value) {
+    struct kernel_symbol *data_sym = NULL;
+    data_sym = (struct kernel_symbol*) find_symbol(data_sym_name,
+        NULL, NULL, true, true);
+    if(data_sym) {
+        dbg_pr("Replacing %s symbol current value (0x%lx) value with 0x%lx.\n",
+            data_sym_name, data_sym->value, new_value);
+        data_sym->value = new_value;
+    } else {
+        dbg_pr("Failed to find %s data symbol.\n", data_sym_name);
     }
 }
-
-void update_data_wrappers(void) {
-}
+EXPORT_SYMBOL(modify_data_sym);
 
 /************************ Setting Wrappers and utility ************************/
 
@@ -141,9 +117,6 @@ void setting_wrappers() {
         }
     } else
         dbg_pr("Couldn't load %s module.\n", WRAPPER_MODULE);
-
-    data_wrappers_init();
-
     dbg_pr("!!!!!!!!!! setting_wrappers end !!!!!!!!!!\n");
 }
 

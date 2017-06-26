@@ -151,7 +151,7 @@ struct initcall_args {
 };
 
 static void wakeinit_thread(struct initcall_args *args, int local_ret, int *ret) {
-    open_close(3);
+    open_close(2);
     entry_gate(wakeinit_label);
     dbg_pr("Post entry gate \\o/ !\n");
     *ret = local_ret;
@@ -188,9 +188,8 @@ static int call_initfunc(void * data) {
     dbg_pr("fn: %p and ret: %p.\n", fn, ret);
 
     exit_gate();
-    open_close(1);
     local_ret = fn();
-    open_close(2);
+    open_close(1);
 
     wakeinit_thread(args, local_ret, ret);
     return 0;
@@ -277,6 +276,7 @@ static int switcher_init(void) {
     init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
         "init_task_pool");
 #endif
+
     return 0;
 }
 

@@ -5,24 +5,96 @@
 
 MODULE_LICENSE("GPL");
 
+/**********************************************************/
 /***************** factorizing wrapper code ***************/
+
+// Only still here for test purpose. Got replaced by exit_gate.
 static void post_call(void) {
     exit_gate();
     dbg_pr("After the exit gate, changing DACR to 0x30df to trigger bug.\n");
     write_dacr(0x30df);
 }
-/****************** data symbol wrappers ******************/
 
-/****************** code symbol wrappers ******************/
+/**********************************************************/
+/****************** data symbol wrappers ******************/
 
 #include <linux/slab.h>
 #include <linux/slab_def.h>
+#include <linux/dik/set_wrap.h>
+struct kmem_cache *wrapper_kmalloc_caches[KMALLOC_SHIFT_HIGH + 1];
+#define     CACHE_SIZE      sizeof(struct kmem_cache)
+
+void wrapper_kmalloc_caches_init(void) {
+    unsigned i;
+    void * ptr;
+    const unsigned total_size = CACHE_SIZE * (KMALLOC_SHIFT_HIGH+1);
+
+    ptr = kmalloc(total_size, GFP_KERNEL);
+    change_domain_ext_ptr(ptr, (unsigned) (total_size/sizeof(unsigned)));
+
+    for(i=0; i<KMALLOC_SHIFT_HIGH + 1; ++i) {
+        if(kmalloc_caches[i]) {
+            wrapper_kmalloc_caches[i] = (struct kmem_cache*) ptr;
+            ptr += CACHE_SIZE;
+            memcpy(wrapper_kmalloc_caches[i], kmalloc_caches[i], CACHE_SIZE);
+        }
+    }
+}
+
+void wrapper_kmalloc_caches_update(void) {
+    unsigned i;
+    for(i=0; i<KMALLOC_SHIFT_HIGH + 1; ++i) {
+        if(kmalloc_caches[i]) {
+            memcpy(wrapper_kmalloc_caches[i], kmalloc_caches[i], CACHE_SIZE);
+        }
+    }
+}
+
+void wrapper_kmalloc_caches_exit(void) {
+    unsigned i;
+    for(i=0; i<KMALLOC_SHIFT_HIGH + 1; ++i) {
+        if(kmalloc_caches[i]) {
+            kfree(kmalloc_caches[i]);
+            return;
+        }
+    }
+}
+
+/*********************** init function **********************/
+#include "wrapper.h"
+
+static int wrapper_init(void) {
+    unsigned i;
+    for(i=0; i < ARRAY_SIZE(data_wrapper_info); ++i) {
+        modify_data_sym(data_wrapper_info[i].data_sym_name,
+                data_wrapper_info[i].new_value);
+        if(data_wrapper_info[i].init_wrapper) 
+            data_wrapper_info[i].init_wrapper();
+    }
+    return 0;
+}
+
+static void wrapper_exit(void) {
+    unsigned i;
+    for(i=0; i < ARRAY_SIZE(data_wrapper_info); ++i) {
+        if(data_wrapper_info[i].update_wrapper)
+            data_wrapper_info[i].update_wrapper();
+    }
+}
+
+module_init(wrapper_init);
+module_exit(wrapper_exit);
+
+/**********************************************************/
+/****************** code symbol wrappers ******************/
+
 void * wrapper__kmalloc(size_t size, gfp_t gfp) {
     void * ret;
     entry_gate(wrapper__kmalloc_label);
     ret = __kmalloc(size, gfp);
     change_domain_ext_ptr(ret, (unsigned int) size);
-    post_call();
+    wrapper_kmalloc_caches_update();
+    exit_gate();
     return ret;
 wrapper__kmalloc_label:
     return wrapper__kmalloc(size, gfp);
@@ -32,6 +104,7 @@ EXPORT_SYMBOL(wrapper__kmalloc);
 void wrapper_kfree(const void * ptr) {
     entry_gate(wrapper_kfree_label);
     kfree(ptr);
+    wrapper_kmalloc_caches_update();
     exit_gate();
 wrapper_kfree_label:
     wrapper_kfree(ptr);
@@ -43,6 +116,7 @@ void *wrapper_kmem_cache_alloc(struct kmem_cache *kc, gfp_t flags) {
     entry_gate(wrapper_kmem_cache_alloc_label)
     ret = kmem_cache_alloc(kc, flags);
     change_domain_ext_ptr(ret, kc->size);
+    wrapper_kmalloc_caches_update();
     exit_gate();
     return ret;
 wrapper_kmem_cache_alloc_label:
@@ -209,12 +283,3 @@ wrapper_of_clk_del_provider_label:
     wrapper_of_clk_del_provider(np);
 }
 EXPORT_SYMBOL(wrapper_of_clk_del_provider);
-
-/*********************** init function **********************/
-
-static int wrapper_init(void) {
-    dbg_pr("drivers/public_domain/wrapper.c: init - registering wrappers.\n");
-    return 0;
-}
-
-module_init(wrapper_init);

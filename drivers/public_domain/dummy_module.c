@@ -3,14 +3,7 @@
 
 MODULE_LICENSE("GPL");
 
-#include <linux/dik/domain.h>
-#include <linux/dik/dacr.h>
-
 static int dummy_init(void) {
-    //dbg_pr("Hi everyone! I'm dummy module starting :-).\n");
-    //dbg_pr("Closing domain %d; should cause a crash.\n", DOMAIN_EXTENSION);
-    //write_dacr(0x5555545f);
-
     // Just to have code and stack usage.
     int i, j;
     i = 3;

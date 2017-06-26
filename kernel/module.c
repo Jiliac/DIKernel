@@ -850,7 +850,6 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
     pr_debug("kernel/module.c: about to call mod->exit if it exits.\n");
 	if (mod->exit != NULL)
 #ifdef CONFIG_DIK_USE
-        update_data_wrappers();
         call_wrapper_exitcall(mod->exit);
 #else
         mod->exit();
@@ -1963,7 +1962,6 @@ static int simplify_symbols(struct module *mod, const struct load_info *info)
 
 			/* We compiled with -fno-common.  These are not
 			   supposed to happen.  */
-			pr_debug("Common symbol: %s\n", name);
 			pr_warn("%s: please compile with -fno-common\n",
 			       mod->name);
 			ret = -ENOEXEC;
@@ -1971,8 +1969,6 @@ static int simplify_symbols(struct module *mod, const struct load_info *info)
 
 		case SHN_ABS:
 			/* Don't need to do anything */
-			pr_debug("Absolute symbol: 0x%08lx\n",
-			       (long)sym[i].st_value);
 			break;
 
 		case SHN_UNDEF:
@@ -3094,9 +3090,6 @@ static noinline int do_init_module(struct module *mod)
 	if (mod->init != NULL){
 #ifdef CONFIG_DIK_EVA
         printk("module insertion finished %s\n", mod->name);
-#endif
-#ifdef CONFIG_DIK_USE
-    update_data_wrappers();
 #endif
 		ret = do_one_initcall(mod->init);
 #ifdef CONFIG_DIK_EVA
