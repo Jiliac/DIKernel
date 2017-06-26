@@ -5,7 +5,7 @@
 # Rewritten to use lists instead of if-statements.
 #
 
-obj-y               += public_domain/
+obj-y               += diswitcher/
 
 obj-y				+= irqchip/
 obj-y				+= bus/
