@@ -9,11 +9,11 @@ MODULE_LICENSE("GPL");
 /***************** factorizing wrapper code ***************/
 
 // Only still here for test purpose. Got replaced by exit_gate.
-static void post_call(void) {
-    exit_gate();
-    dbg_pr("After the exit gate, changing DACR to 0x30df to trigger bug.\n");
-    write_dacr(0x30df);
-}
+//static void post_call(void) {
+//    exit_gate();
+//    dbg_pr("After the exit gate, changing DACR to 0x30df to trigger bug.\n");
+//    write_dacr(0x30df);
+//}
 
 /**********************************************************/
 /****************** data symbol wrappers ******************/
@@ -203,6 +203,7 @@ void func(const struct device *dev, const char *fmt, ...)	\
 EXPORT_SYMBOL(func);
 
 define_wrapper_dev_printk_level(wrapper_dev_err, KERN_ERR);
+define_wrapper_dev_printk_level(wrapper__dev_info, KERN_INFO);
 
 #include <linux/platform_device.h>
 int wrapper__platform_driver_register(struct platform_driver *pd,
@@ -283,3 +284,63 @@ wrapper_of_clk_del_provider_label:
     wrapper_of_clk_del_provider(np);
 }
 EXPORT_SYMBOL(wrapper_of_clk_del_provider);
+
+#include <linux/hw_random.h>
+int wrapper_hwrng_register(struct hwrng *rng) {
+    int ret;
+    entry_gate(wrapper_hwrng_register_label);
+    ret = hwrng_register(rng);
+    exit_gate();
+    return ret;
+wrapper_hwrng_register_label:
+    return wrapper_hwrng_register(rng);
+}
+EXPORT_SYMBOL(wrapper_hwrng_register);
+
+void wrapper_hwrng_unregister(struct hwrng *rng) {
+    entry_gate(wrapper_hwrng_unregister_label);
+    hwrng_unregister(rng);
+    exit_gate();
+wrapper_hwrng_unregister_label:
+    wrapper_hwrng_unregister(rng);
+}
+EXPORT_SYMBOL(wrapper_hwrng_unregister);
+
+#include <asm/io.h>
+void wrapper__arm_iounmap(volatile void __iomem *addr) {
+    entry_gate(wrapper__arm_iounmap_label);
+    __arm_iounmap(addr);
+    exit_gate();
+wrapper__arm_iounmap_label:
+    wrapper__arm_iounmap(addr);
+}
+EXPORT_SYMBOL(wrapper__arm_iounmap);
+
+#include <linux/of_address.h>
+/* !!! BEWARE !!!!
+ * The passed pointer probably is a pointer to some data that will be read.
+ * This wrapper isn't finished...
+ */
+void __iomem *wrapper_of_iomap(struct device_node *node, int index) {
+    void * ret;
+    entry_gate(wrapper_of_iomap_label);
+    ret = of_iomap(node, index);
+    exit_gate();
+    return ret;
+wrapper_of_iomap_label:
+    return wrapper_of_iomap(node, index);
+}
+EXPORT_SYMBOL(wrapper_of_iomap);
+
+#include <linux/fs.h>
+int wrapper_alloc_chrdev_region(dev_t *dev, unsigned baseminor, unsigned count,
+        const char *name) {
+    int ret;
+    entry_gate(wrapper_alloc_chrdev_region_label);
+    ret = alloc_chrdev_region(dev, baseminor, count, name);
+    exit_gate();
+    return ret;
+wrapper_alloc_chrdev_region_label:
+    return wrapper_alloc_chrdev_region(dev, baseminor, count, name);
+}
+EXPORT_SYMBOL(wrapper_alloc_chrdev_region);

@@ -57,12 +57,6 @@ struct sync_args {
 #endif
 };
 
-#ifdef CONFIG_VIRTUAL_BK_DID
-// To Remove code. Let it in case this hypothesis if true in the end.
-extern void change_all_ids(unsigned int id);
-extern void change_kernel_domain(void);
-#endif
-
 static inline void wake_thread(struct sync_args *sync, unsigned int args_addr) {
 #ifdef CONFIG_DIK_USE_THREAD
     size_t domain = addr_domain_id(args_addr);
@@ -117,19 +111,7 @@ static void thread_and_sync(int (*threadfn)(void *data), void *data,
 #endif
 
     wait_event_interruptible(wq, event != 0);
-    /*
-     * Design wise change the Domain ID of the stack back to its original value
-     * isn't a problem. HOWEVER, it is a big performance problem. Because of the
-     * TLB flushes... that the whole project was suppose to avoid in the first
-     * place! Thus, we haven't really solve the stack problem.
-     * 
-     * SOLUTION @TODO: Having "pool" of memory that are in a specific somain a
-     * being able to allocate stacks in this specific domain. OR having a 1st
-     * level page descriptor being created just for this stack. Even with this
-     * last solution, we would have to ensure the kernel doesn't modify the
-     * domain back or doesn't mistakenly allocate stuff there that isn't
-     * supposed to be in this domain. 
-     */
+    
     dbg_pr("call change_stack_back for emulation environment(?)\n");
     change_stack_back(DOMAIN_KERNEL, stack);
 #else
@@ -217,10 +199,6 @@ struct exitcall_args {
     struct sync_args *sync;
 };
 
-/* Not necessary to have an extra function as in the init case, since there are
- * no return argument to be copied.
- * Just to have a similar code.
- */
 static void wakeexit_thread(struct exitcall_args *args) {
     entry_gate(wakeexit_label);
     wake_thread(args->sync, (unsigned int) args); 

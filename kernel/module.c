@@ -2809,6 +2809,7 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 	return 0;
 }
 
+extern int get_wrapper_set(void);
 static int move_module(struct module *mod, struct load_info *info)
 {
 	int i;
@@ -2847,7 +2848,8 @@ static int move_module(struct module *mod, struct load_info *info)
 		mod->module_init = NULL;
 
 #ifdef CONFIG_DIK_USE
-    module_change_domain(mod);
+    if(get_wrapper_set())
+        module_change_domain(mod);
 #endif
 
 	/* Transfer each section which specifies SHF_ALLOC */

@@ -50,12 +50,17 @@ static struct code_wrapper code_wrappers[] = {
     {"printk",      "wrapper_printk"    },
     {"__dev_printk",    "wrapper___dev_printk"  },
     {"dev_err"  ,   "wrapper_dev_err"   },
+    {"_dev_info",   "wrapper__dev_info" },
     {"platform_driver_unregister",  "wrapper_platform_driver_unregister"    },
     {"__platform_driver_register",  "wrapper__platform_driver_register"     },
     {"of_clk_src_simple_get",       "wrapper_of_clk_src_simple_get"     },
     {"devm_clk_register",       "wrapper_devm_clk_register"     },
     {"of_clk_add_provider",     "wrapper_of_clk_add_provider"   },
     {"of_clk_del_provider", "wrapper_of_clk_del_provider"   },
+    {"hwrng_unregister",    "wrapper_hwrng_unregister"      },
+    {"hwrng_register",      "wrapper_hwrng_register"    },
+    {"__arm_iounmap",       "wrapper__arm_iounmap"  },
+    {"alloc_chrdev_region",     "wrapper_alloc_chrdev_region"   },
 };
 
 /**************************** Data Symbol Wrapper *****************************/
@@ -123,3 +128,4 @@ void setting_wrappers() {
 int get_wrapper_set(void) {
     return wrapper_set;
 }
+EXPORT_SYMBOL(get_wrapper_set);
