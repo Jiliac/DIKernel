@@ -113,7 +113,7 @@ EXPORT_SYMBOL(wrapper_kfree);
 
 void *wrapper_kmem_cache_alloc(struct kmem_cache *kc, gfp_t flags) {
     void * ret;
-    entry_gate(wrapper_kmem_cache_alloc_label)
+    entry_gate(wrapper_kmem_cache_alloc_label);
     ret = kmem_cache_alloc(kc, flags);
     change_domain_ext_ptr(ret, kc->size);
     wrapper_kmalloc_caches_update();
@@ -177,7 +177,7 @@ EXPORT_SYMBOL(wrapper_printk);
 void wrapper___dev_printk(const char * level, const struct device *dev,
     struct va_format *vaf)
 {
-    entry_gate(wrapper___dev_printk_label)
+    entry_gate(wrapper___dev_printk_label);
     __dev_printk(level, dev, vaf);
     exit_gate();
 wrapper___dev_printk_label:
@@ -209,7 +209,7 @@ define_wrapper_dev_printk_level(wrapper__dev_info, KERN_INFO);
 int wrapper__platform_driver_register(struct platform_driver *pd,
     struct module *mod) {
     int ret;
-    entry_gate(wrapper__platform_driver_register_label)
+    entry_gate(wrapper__platform_driver_register_label);
     ret = __platform_driver_register(pd, mod);
     exit_gate();
     return ret;
