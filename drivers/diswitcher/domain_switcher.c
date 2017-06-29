@@ -138,6 +138,9 @@ static void wakeinit_thread(struct initcall_args *args, int local_ret, int *ret)
     dbg_pr("Post entry gate \\o/ !\n");
     *ret = local_ret;
 #ifdef  CONFIG_DIK_THREAD_POOL
+    /* This is not very performant because it one thread is created for every
+     * init_module call. Just happens after the original function is called.
+     */
     init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
         "init_task_pool");
 #endif

@@ -810,6 +810,17 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
 	if (mutex_lock_interruptible(&module_mutex) != 0)
 		return -EINTR;
 
+#ifdef CONFIG_DIK_USE
+    pr_debug("delete_module system call to delete: %s module.\n", name);
+    /* Doesn't matter if WRAPPER_MODULE is removed. Wrapper are for
+     * compatibility, not security.
+     */
+    if(!strcmp(name, SWITCHER_MODULE)) {   
+        pr_debug("%s cannot be removed.\n", name);
+        return 0;
+    }
+#endif
+
 	mod = find_module(name);
 	if (!mod) {
 		ret = -ENOENT;

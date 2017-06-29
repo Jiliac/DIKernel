@@ -106,6 +106,7 @@ void wrapper_kfree(const void * ptr) {
     kfree(ptr);
     wrapper_kmalloc_caches_update();
     exit_gate();
+    return;
 wrapper_kfree_label:
     wrapper_kfree(ptr);
 }
@@ -180,6 +181,7 @@ void wrapper___dev_printk(const char * level, const struct device *dev,
     entry_gate(wrapper___dev_printk_label);
     __dev_printk(level, dev, vaf);
     exit_gate();
+    return;
 wrapper___dev_printk_label:
     wrapper___dev_printk(level, dev, vaf);
 }
@@ -220,8 +222,10 @@ EXPORT_SYMBOL(wrapper__platform_driver_register);
 
 void wrapper_platform_driver_unregister(struct platform_driver *pd) {
     entry_gate(wrapper_platform_driver_unregister_label);
+    dbg_pr("wrapper_platform_driver_unregister called.\n");
     platform_driver_unregister(pd);
     exit_gate();
+    return;
 wrapper_platform_driver_unregister_label:
     wrapper_platform_driver_unregister(pd);
 }
@@ -280,6 +284,7 @@ void wrapper_of_clk_del_provider(struct device_node *np) {
     entry_gate(wrapper_of_clk_del_provider_label);
     of_clk_del_provider(np);
     exit_gate();
+    return;
 wrapper_of_clk_del_provider_label:
     wrapper_of_clk_del_provider(np);
 }
@@ -301,6 +306,7 @@ void wrapper_hwrng_unregister(struct hwrng *rng) {
     entry_gate(wrapper_hwrng_unregister_label);
     hwrng_unregister(rng);
     exit_gate();
+    return;
 wrapper_hwrng_unregister_label:
     wrapper_hwrng_unregister(rng);
 }
@@ -311,6 +317,7 @@ void wrapper__arm_iounmap(volatile void __iomem *addr) {
     entry_gate(wrapper__arm_iounmap_label);
     __arm_iounmap(addr);
     exit_gate();
+    return;
 wrapper__arm_iounmap_label:
     wrapper__arm_iounmap(addr);
 }
