@@ -82,11 +82,16 @@ void * init_task_pool_data;
 static int call_initfunc(void * data);
 #endif
 
+#ifdef  CONFIG_DIK_THREAD_POOL
+DECLARE_WAIT_QUEUE_HEAD(wq);
+#endif
 static void thread_and_sync(int (*threadfn)(void *data), void *data,
     const char *namefmt, struct sync_args *sync)
 {
 #ifdef CONFIG_DIK_USE_THREAD
-    DECLARE_WAIT_QUEUE_HEAD(wq);
+#ifndef  CONFIG_DIK_THREAD_POOL
+DECLARE_WAIT_QUEUE_HEAD(wq);
+#endif
     int event = false;
     unsigned long stack;
     struct task_struct *task;
@@ -140,6 +145,7 @@ static void wakeinit_thread(struct initcall_args *args, int local_ret, int *ret)
 #ifdef  CONFIG_DIK_THREAD_POOL
     /* This is not very performant because it one thread is created for every
      * init_module call. Just happens after the original function is called.
+     * But "simulates" thread pool in term of performance.
      */
     init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
         "init_task_pool");

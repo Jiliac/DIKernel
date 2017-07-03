@@ -179,6 +179,7 @@ void wrapper___dev_printk(const char * level, const struct device *dev,
     struct va_format *vaf)
 {
     entry_gate(wrapper___dev_printk_label);
+    dbg_pr("wrapper___dev_printk\n");
     __dev_printk(level, dev, vaf);
     exit_gate();
     return;
@@ -207,11 +208,70 @@ EXPORT_SYMBOL(func);
 define_wrapper_dev_printk_level(wrapper_dev_err, KERN_ERR);
 define_wrapper_dev_printk_level(wrapper__dev_info, KERN_INFO);
 
+struct class * __must_check wrapper__class_create(struct module *owner,
+        const char *name, struct lock_class_key *key) {
+    struct class * ret;
+    struct class * copy_ret;
+    entry_gate(wrapper__class_create_label);
+    ret = __class_create(owner, name, key);
+    copy_ret = kmalloc(sizeof(struct class), GFP_KERNEL);
+    memcpy(copy_ret, ret, sizeof(struct class));
+    exit_gate();
+    return copy_ret;
+wrapper__class_create_label:
+    return wrapper__class_create(owner, name, key);
+}
+EXPORT_SYMBOL(wrapper__class_create);
+
+void wrapper_class_destroy(struct class *cls) {
+    entry_gate(wrapper_class_destroy_label);
+    class_destroy(cls);
+    exit_gate();
+    return;
+wrapper_class_destroy_label:
+    return wrapper_class_destroy(cls);
+}
+EXPORT_SYMBOL(wrapper_class_destroy);
+
+struct device *wrapper_device_create_vargs(struct class *class,
+        struct device *parent, dev_t devt, void *drvdata, const char *fmt,
+        va_list args) {
+    struct device *ret;
+    struct device *copy_ret;
+    entry_gate(wrapper_device_create_vargs_label);
+    ret = device_create_vargs(class, parent, devt, drvdata, fmt, args);
+    /*  Problem of 'just' copying the device structure is that is points to many
+     *  other structure. However, it is mostly used by modules just to call
+     *  other kernel functions in the end.
+     */
+    copy_ret = kmalloc(sizeof(struct device), GFP_KERNEL);
+    memcpy(copy_ret, ret, sizeof(struct device));
+    exit_gate();
+    return copy_ret;
+ wrapper_device_create_vargs_label:
+    return wrapper_device_create_vargs(class, parent, devt, drvdata, fmt, args);
+}
+EXPORT_SYMBOL(wrapper_device_create_vargs);
+
+struct device *wrapper_device_create(struct class *class, struct device *parent,
+        dev_t devt, void *drvdata, const char *fmt, ...) {
+    va_list vargs;
+    struct device *dev;
+
+    va_start(vargs, fmt);
+    dev = wrapper_device_create_vargs(class, parent, devt, drvdata, fmt, vargs);
+    va_end(vargs);
+    return dev;
+
+}
+EXPORT_SYMBOL(wrapper_device_create);
+
 #include <linux/platform_device.h>
 int wrapper__platform_driver_register(struct platform_driver *pd,
     struct module *mod) {
     int ret;
     entry_gate(wrapper__platform_driver_register_label);
+    dbg_pr("__platform_driver_register\n");
     ret = __platform_driver_register(pd, mod);
     exit_gate();
     return ret;
@@ -230,6 +290,31 @@ wrapper_platform_driver_unregister_label:
     wrapper_platform_driver_unregister(pd);
 }
 EXPORT_SYMBOL(wrapper_platform_driver_unregister);
+
+struct resource *wrapper_platform_get_resource(struct platform_device *pd,
+        unsigned int i1, unsigned int i2) {
+    struct resource *ret;
+    struct resource *copy_ret;
+    entry_gate(wrapper_platform_get_resource_label);
+    ret = platform_get_resource(pd, i1, i2);
+    copy_ret = kmalloc(sizeof(struct resource), GFP_KERNEL);
+    memcpy(copy_ret, ret, sizeof(struct resource));
+    exit_gate();
+    return copy_ret;
+wrapper_platform_get_resource_label:
+    return wrapper_platform_get_resource(pd, i1, i2);
+}
+EXPORT_SYMBOL(wrapper_platform_get_resource);
+
+void wrapper_device_destroy(struct class *cls, dev_t devt) {
+    entry_gate(wrapper_device_destroy_label);
+    device_destroy(cls, devt);
+    exit_gate();
+    return;
+wrapper_device_destroy_label:
+    wrapper_device_destroy(cls, devt);
+}
+EXPORT_SYMBOL(wrapper_device_destroy);
 
 #include <linux/clk-provider.h>
 #define CLK_SIZE    200*sizeof(int)
@@ -294,7 +379,9 @@ EXPORT_SYMBOL(wrapper_of_clk_del_provider);
 int wrapper_hwrng_register(struct hwrng *rng) {
     int ret;
     entry_gate(wrapper_hwrng_register_label);
+    dbg_pr("hwrng_register\n");
     ret = hwrng_register(rng);
+    dbg_pr("hwrng_register post ret\n");
     exit_gate();
     return ret;
 wrapper_hwrng_register_label:
@@ -304,6 +391,7 @@ EXPORT_SYMBOL(wrapper_hwrng_register);
 
 void wrapper_hwrng_unregister(struct hwrng *rng) {
     entry_gate(wrapper_hwrng_unregister_label);
+    dbg_pr("hwrng_unregister\n");
     hwrng_unregister(rng);
     exit_gate();
     return;
@@ -315,6 +403,7 @@ EXPORT_SYMBOL(wrapper_hwrng_unregister);
 #include <asm/io.h>
 void wrapper__arm_iounmap(volatile void __iomem *addr) {
     entry_gate(wrapper__arm_iounmap_label);
+    dbg_pr("__arm_iounmap\n");
     __arm_iounmap(addr);
     exit_gate();
     return;
@@ -331,6 +420,7 @@ EXPORT_SYMBOL(wrapper__arm_iounmap);
 void __iomem *wrapper_of_iomap(struct device_node *node, int index) {
     void * ret;
     entry_gate(wrapper_of_iomap_label);
+    dbg_pr("of_iomap\n");
     ret = of_iomap(node, index);
     exit_gate();
     return ret;
@@ -351,3 +441,64 @@ wrapper_alloc_chrdev_region_label:
     return wrapper_alloc_chrdev_region(dev, baseminor, count, name);
 }
 EXPORT_SYMBOL(wrapper_alloc_chrdev_region);
+
+void wrapper_unregister_chrdev_region(dev_t dev, unsigned i) {
+    entry_gate(wrapper_unregister_chrdev_region_label);
+    unregister_chrdev_region(dev, i);
+    exit_gate();
+    return;
+wrapper_unregister_chrdev_region_label:
+    wrapper_unregister_chrdev_region(dev, i);
+}
+EXPORT_SYMBOL(wrapper_unregister_chrdev_region);
+
+#include <linux/cdev.h>
+int wrapper_cdev_add(struct cdev *cd, dev_t d, unsigned i) {
+    int ret;
+    entry_gate(wrapper_cdev_add_label);
+    ret = cdev_add(cd, d, i);
+    exit_gate();
+    return ret;
+wrapper_cdev_add_label:
+    return wrapper_cdev_add(cd, d, i);
+}
+EXPORT_SYMBOL(wrapper_cdev_add);
+
+void wrapper_cdev_init(struct cdev *cdev, const struct file_operations *fo) {
+    entry_gate(wrapper_cdev_init_label);
+    cdev_init(cdev, fo);
+    exit_gate();
+    return;
+wrapper_cdev_init_label:
+    wrapper_cdev_init(cdev, fo);
+}
+EXPORT_SYMBOL(wrapper_cdev_init);
+
+#include <linux/mm.h>
+int wrapper_remap_pfn_range(struct vm_area_struct *va, unsigned long addr,
+        unsigned long pfn, unsigned long size, pgprot_t prot) {
+    int ret;
+    entry_gate(wrapper_remap_pfn_range_label);
+    /*  @prot argument could/should be checked since it ends up in page tables
+     *  that we want to protect.
+     */
+    ret = remap_pfn_range(va, addr, pfn, size, prot);
+    exit_gate();
+    return ret;
+ wrapper_remap_pfn_range_label:
+    return wrapper_remap_pfn_range(va, addr, pfn, size, prot);
+}
+EXPORT_SYMBOL(wrapper_remap_pfn_range);
+
+#include <asm/pgtable.h>
+extern pgprot_t wrapper_phys_mem_access_prot(struct file *file,
+        unsigned long pfn, unsigned long size, pgprot_t vma_prot) {
+    pgprot_t ret;
+    entry_gate(wrapper_phys_mem_access_prot_label);
+    ret = phys_mem_access_prot(file, pfn, size, vma_prot);
+    exit_gate();
+    return ret;
+wrapper_phys_mem_access_prot_label:
+    return wrapper_phys_mem_access_prot(file, pfn, size, vma_prot);
+}
+EXPORT_SYMBOL(wrapper_phys_mem_access_prot);

@@ -51,8 +51,14 @@ static struct code_wrapper code_wrappers[] = {
     {"__dev_printk",    "wrapper___dev_printk"  },
     {"dev_err"  ,   "wrapper_dev_err"   },
     {"_dev_info",   "wrapper__dev_info" },
-    {"platform_driver_unregister",  "wrapper_platform_driver_unregister"    },
+    {"__class_create",  "wrapper__class_create" },
+    {"class_destroy",   "wrapper_class_destroy" },
+    {"device_create_vargs",     "wrapper_device_create_vargs"   },
+    {"device_create",   "wrapper_device_create"     },
     {"__platform_driver_register",  "wrapper__platform_driver_register"     },
+    {"platform_driver_unregister",  "wrapper_platform_driver_unregister"    },
+    {"platform_get_resource",   "wrapper_platform_get_resource" },
+    {"device_destroy",  "wrapper_device_destroy"    },
     {"of_clk_src_simple_get",       "wrapper_of_clk_src_simple_get"     },
     {"devm_clk_register",       "wrapper_devm_clk_register"     },
     {"of_clk_add_provider",     "wrapper_of_clk_add_provider"   },
@@ -61,6 +67,11 @@ static struct code_wrapper code_wrappers[] = {
     {"hwrng_register",      "wrapper_hwrng_register"    },
     {"__arm_iounmap",       "wrapper__arm_iounmap"  },
     {"alloc_chrdev_region",     "wrapper_alloc_chrdev_region"   },
+    {"unregister_chrdev_region",    "wrapper_unregister_chrdev_region"  },
+    {"remap_pfn_range",     "wrapper_remap_pfn_range"   },
+    {"cdev_add",    "wrapper_cdev_add"  },
+    {"cdev_init",   "wrapper_cdev_init" },
+    {"phys_mem_access_prot",    "wrapper_phys_mem_access_prot"},
 };
 
 /**************************** Data Symbol Wrapper *****************************/

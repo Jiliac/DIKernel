@@ -91,16 +91,14 @@ void dacr_poc(unsigned domain_right) {
 #include <asm/domain.h>
 #include <linux/dik/interrupt.h>
 
-#define BUF_SIZE    3000000
-static int table[BUF_SIZE];
-
 //extern struct kmem_cache *kmalloc_caches[KMALLOC_SHIFT_HIGH + 1];
 #include <linux/slab.h>
 
 asmlinkage long sys_dikcall(void) {
-    if(1) {
+   if(0) {
         unsigned i;
         for(i=0; i<KMALLOC_SHIFT_HIGH + 1; ++i) {
+            dbg_pr("kmalloc_caches: %p\n", kmalloc_caches);
             dbg_pr("kmalloc_caches[%d] = %p.\n", i, kmalloc_caches[i]);
         }
     }

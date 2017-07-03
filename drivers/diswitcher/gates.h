@@ -50,7 +50,7 @@
     /*reenable_interrupt();       \*/
 #define entry_gate(label)       \
     GATE(ENTRY_DACR, label);    \
-    isb();
+    isb()
 
 void exit_gate(void) {
     dbg_pr("Loading EXIT value in DACR: 0x%x.\n", EXIT_DACR);
