@@ -87,33 +87,39 @@ void dacr_poc(unsigned domain_right) {
     printk("Reached the end of dacr_poc?\n");
 }
 
+/************** Cycle Counter Register (CCNT) Try ****************/
+#define cc_read_first_try(cc)     \
+    asm volatile ("mrc p15, 0, %0, c15, c12, 1" : "=r" (cc))
+
+#define cc_read(cc)     \
+    asm volatile(       \
+        "push {r5}\n\t"   \
+        "mrc p15, 0, r5, c15, c12, 1\n\t"   \
+        "mov %0, r5\n\t"    \
+        "pop {r5}\n\t"    \
+        : "=r" (cc))
+
+void cc_poc(void) {
+    unsigned cc;
+    cc = 3;
+    cc_read_first_try(cc);
+    printk("At t1, cc=0x%x\n", cc);
+    cc_read(cc);
+    printk("At t2, cc=0x%x\n", cc);
+}
+
+static inline unsigned ccnt_read (void)
+{
+    unsigned cc;
+    asm volatile ("mrc p15, 0, %0, c15, c12, 1" : "=r" (cc));
+    return cc;
+}
+
 /******************** System Call *********************/
-#include <asm/domain.h>
-#include <linux/dik/interrupt.h>
-
-//extern struct kmem_cache *kmalloc_caches[KMALLOC_SHIFT_HIGH + 1];
-#include <linux/slab.h>
-
 asmlinkage long sys_dikcall(void) {
-   if(0) {
-        unsigned i;
-        for(i=0; i<KMALLOC_SHIFT_HIGH + 1; ++i) {
-            dbg_pr("kmalloc_caches: %p\n", kmalloc_caches);
-            dbg_pr("kmalloc_caches[%d] = %p.\n", i, kmalloc_caches[i]);
-        }
-    }
-
-    if(0) {
-        if(!pt_dacr)
-            pt_dacr = vmalloc(ALLOC_SIZE/*, GFP_KERNEL*/);
-            // use vmalloc because kmalloc allocates just next to the used stack.
-        dacr_poc(DOMAIN_NOACCESS);
-    }
-
-    if(0) {
-        disable_interrupt();
-        reenable_interrupt();
-    }
-
+    unsigned cc = 26;
+    cc_poc();
+    cc = ccnt_read();
+    printk("At t3, cc=0x%x\n", cc);
     return 0;
 }

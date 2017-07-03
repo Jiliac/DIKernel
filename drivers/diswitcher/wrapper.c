@@ -5,9 +5,6 @@
 
 MODULE_LICENSE("GPL");
 
-/**********************************************************/
-/***************** factorizing wrapper code ***************/
-
 // Only still here for test purpose. Got replaced by exit_gate.
 //static void post_call(void) {
 //    exit_gate();
@@ -139,7 +136,6 @@ EXPORT_SYMBOL(wrapper__aeabi_unwind_cpp_pr0);
 extern void __aeabi_unwind_cpp_pr1(void);
 void wrapper__aeabi_unwind_cpp_pr1(void) {
     entry_gate(wrapper__aeabi_unwind_cpp_pr1_label);
-    dbg_pr("Calling __aeabi_unwind_cpp_pr1 through a wrapper.\n");
     __aeabi_unwind_cpp_pr1();
     exit_gate();
     return;
@@ -179,7 +175,6 @@ void wrapper___dev_printk(const char * level, const struct device *dev,
     struct va_format *vaf)
 {
     entry_gate(wrapper___dev_printk_label);
-    dbg_pr("wrapper___dev_printk\n");
     __dev_printk(level, dev, vaf);
     exit_gate();
     return;
@@ -271,7 +266,6 @@ int wrapper__platform_driver_register(struct platform_driver *pd,
     struct module *mod) {
     int ret;
     entry_gate(wrapper__platform_driver_register_label);
-    dbg_pr("__platform_driver_register\n");
     ret = __platform_driver_register(pd, mod);
     exit_gate();
     return ret;
@@ -282,7 +276,6 @@ EXPORT_SYMBOL(wrapper__platform_driver_register);
 
 void wrapper_platform_driver_unregister(struct platform_driver *pd) {
     entry_gate(wrapper_platform_driver_unregister_label);
-    dbg_pr("wrapper_platform_driver_unregister called.\n");
     platform_driver_unregister(pd);
     exit_gate();
     return;
@@ -381,7 +374,6 @@ int wrapper_hwrng_register(struct hwrng *rng) {
     entry_gate(wrapper_hwrng_register_label);
     dbg_pr("hwrng_register\n");
     ret = hwrng_register(rng);
-    dbg_pr("hwrng_register post ret\n");
     exit_gate();
     return ret;
 wrapper_hwrng_register_label:
@@ -391,7 +383,6 @@ EXPORT_SYMBOL(wrapper_hwrng_register);
 
 void wrapper_hwrng_unregister(struct hwrng *rng) {
     entry_gate(wrapper_hwrng_unregister_label);
-    dbg_pr("hwrng_unregister\n");
     hwrng_unregister(rng);
     exit_gate();
     return;
@@ -403,7 +394,6 @@ EXPORT_SYMBOL(wrapper_hwrng_unregister);
 #include <asm/io.h>
 void wrapper__arm_iounmap(volatile void __iomem *addr) {
     entry_gate(wrapper__arm_iounmap_label);
-    dbg_pr("__arm_iounmap\n");
     __arm_iounmap(addr);
     exit_gate();
     return;
@@ -420,7 +410,6 @@ EXPORT_SYMBOL(wrapper__arm_iounmap);
 void __iomem *wrapper_of_iomap(struct device_node *node, int index) {
     void * ret;
     entry_gate(wrapper_of_iomap_label);
-    dbg_pr("of_iomap\n");
     ret = of_iomap(node, index);
     exit_gate();
     return ret;

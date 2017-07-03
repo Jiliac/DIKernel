@@ -10,7 +10,7 @@ MODULE_LICENSE("GPL");
 /************************************************************************/
 #include <linux/dik/stack.h>    // print stack pointer
 #include <linux/dik/thread.h>   // read_current_task_ids
-#include <linux/dik/domain.h>   // DOMAIN_PUBLIC and addr_get_domain
+#include <linux/dik/domain.h>   // DOMAIN_EXTENSION
 #include <linux/dik/dacr.h>     // write_dacr and read_dacr macros
 #include <asm/thread_info.h>    // for the macros (current_thread_info)
 

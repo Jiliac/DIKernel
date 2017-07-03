@@ -10,16 +10,13 @@
 #ifdef CONFIG_DIK_USE_THREAD
 #define EXIT_DACR \
     (domain_val(DOMAIN_USER, DOMAIN_MANAGER) |   \
-     domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \
      domain_val(DOMAIN_IO, DOMAIN_CLIENT) |      \
-     domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER) | \
      domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER))
 #else
 #define EXIT_DACR \
     (domain_val(DOMAIN_USER, DOMAIN_MANAGER) |   \
      domain_val(DOMAIN_KERNEL, DOMAIN_MANAGER) | \
      domain_val(DOMAIN_IO, DOMAIN_CLIENT) |      \
-     domain_val(DOMAIN_PUBLIC, DOMAIN_MANAGER) | \
      domain_val(DOMAIN_EXTENSION, DOMAIN_MANAGER))
 #endif
 #define ENTRY_DACR   (KERNEL_DACR)
