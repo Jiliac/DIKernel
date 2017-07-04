@@ -2956,6 +2956,11 @@ int __weak module_frob_arch_sections(Elf_Ehdr *hdr,
 	return 0;
 }
 
+#ifdef CONFIG_DIK_EVA
+#include <linux/dik/cyclecount.h>
+unsigned int cc_ins, cc_init, cc_done;
+#endif
+
 static struct module *layout_and_allocate(struct load_info *info, int flags)
 {
 	/* Module within temporary copy. */
@@ -2986,7 +2991,7 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 	layout_symtab(mod, info);
 
 #ifdef CONFIG_DIK_EVA
-    printk("insert module %s\n", mod->name);
+    get_cyclecount(cc_ins);
 #endif
 	/* Allocate and move to the final place */
 	err = move_module(mod, info);
@@ -3102,11 +3107,13 @@ static noinline int do_init_module(struct module *mod)
 	/* Start the module */
 	if (mod->init != NULL){
 #ifdef CONFIG_DIK_EVA
-        printk("module insertion finished %s\n", mod->name);
+        get_cyclecount(cc_init);
 #endif
 		ret = do_one_initcall(mod->init);
 #ifdef CONFIG_DIK_EVA
-        printk("do_one_initcall done %s\n", mod->name);
+        get_cyclecount(cc_done);
+        printk("insert time: %d - init call time: %d\n", cc_init - cc_ins,
+            cc_done - cc_init);
 #endif
     }
 	if (ret < 0) {

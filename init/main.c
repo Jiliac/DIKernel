@@ -88,8 +88,11 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
-#include<linux/dik/set_wrap.h> 
+#include <linux/dik/set_wrap.h> 
 #include <asm/domain.h>
+#ifdef CONFIG_DIK_EVA
+#include <linux/dik/cyclecount.h>
+#endif
 
 static int kernel_init(void *);
 
@@ -1050,6 +1053,7 @@ static noinline void __init kernel_init_freeable(void)
         setting_wrappers();
 #endif
 #ifdef CONFIG_DIK_EVA
+    init_perfcounters();
     printk("Start evaluation\n");
 #endif
 }
