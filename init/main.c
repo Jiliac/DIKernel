@@ -1053,7 +1053,6 @@ static noinline void __init kernel_init_freeable(void)
         setting_wrappers();
 #endif
 #ifdef CONFIG_DIK_EVA
-    init_perfcounters();
     printk("Start evaluation\n");
 #endif
 }

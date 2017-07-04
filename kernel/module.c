@@ -2991,6 +2991,7 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 	layout_symtab(mod, info);
 
 #ifdef CONFIG_DIK_EVA
+    init_perfcounters();
     get_cyclecount(cc_ins);
 #endif
 	/* Allocate and move to the final place */
@@ -3112,8 +3113,9 @@ static noinline int do_init_module(struct module *mod)
 		ret = do_one_initcall(mod->init);
 #ifdef CONFIG_DIK_EVA
         get_cyclecount(cc_done);
-        printk("insert time: %d - init call time: %d\n", cc_init - cc_ins,
-            cc_done - cc_init);
+        printk("insert cyle_count: %d - init call cycle_count: %d"
+            "- mod_name: %s\n",
+            cc_init - cc_ins, cc_done - cc_init, mod->name);
 #endif
     }
 	if (ret < 0) {
