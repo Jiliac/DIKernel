@@ -622,7 +622,7 @@ config DIK_USE_THREAD
        For DIKernel to use threads to run extension. Break security if not used. 
 
 config DIK_THREAD_POOL
-    bool "Usage of thread pull for better performance."
+    bool "Usage of thread pool for better performance."
     depends on DIK_USE_THREAD
     help
         Thread are pre-created at boot time and used when extensions are called.

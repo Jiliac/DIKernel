@@ -2961,6 +2961,10 @@ int __weak module_frob_arch_sections(Elf_Ehdr *hdr,
 #include <linux/timekeeping.h>
 unsigned int cc_ins, cc_init, cc_done;
 struct timespec ts_ins, ts_init, ts_done;
+unsigned int * cc_done_pt = &cc_done;
+struct timespec *ts_done_pt = &ts_done;
+EXPORT_SYMBOL(cc_done_pt);
+EXPORT_SYMBOL(ts_done_pt);
 #endif
 
 static struct module *layout_and_allocate(struct load_info *info, int flags)
@@ -3116,8 +3120,6 @@ static noinline int do_init_module(struct module *mod)
 #endif
 		ret = do_one_initcall(mod->init);
 #ifdef CONFIG_DIK_EVA
-        get_cyclecount(cc_done);
-        do_posix_clock_monotonic_gettime(&ts_done);
         printk("ts_ins: %ld.%ld - ts_init: %ld.%ld - ts_done: %ld.%ld"
             " - mod_name: %s\n", ts_ins.tv_sec, ts_ins.tv_nsec, ts_init.tv_sec,
             ts_init.tv_nsec, ts_done.tv_sec, ts_done.tv_nsec, mod->name);

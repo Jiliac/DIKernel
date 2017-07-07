@@ -80,14 +80,20 @@ static inline void wake_thread(struct sync_args *sync, unsigned int args_addr) {
 struct task_struct * init_thread_pool;
 void * init_task_pool_data;
 static int call_initfunc(void * data);
+DECLARE_WAIT_QUEUE_HEAD(wq);
+static inline void do_init_thread_pool(void) {
+    init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
+        "init_task_pool");
+    set_task_stack_domain_id(DOMAIN_EXTENSION, init_thread_pool);
+}
 #endif
 
 #ifdef CONFIG_DIK_EVA
 #include <linux/timekeeping.h>
+#include <linux/dik/cyclecount.h>
 struct timespec ts_before, ts_after;
-#endif
-#ifdef  CONFIG_DIK_THREAD_POOL
-DECLARE_WAIT_QUEUE_HEAD(wq);
+extern unsigned int *cc_done_pt;
+extern struct timespec *ts_done_pt;
 #endif
 static void thread_and_sync(int (*threadfn)(void *data), void *data,
     const char *namefmt, struct sync_args *sync)
@@ -106,6 +112,7 @@ static void thread_and_sync(int (*threadfn)(void *data), void *data,
 #ifdef  CONFIG_DIK_THREAD_POOL
     if(threadfn == call_initfunc) {
         init_task_pool_data = data;
+        change_reg_ids();
         stack = set_task_stack_domain_id(DOMAIN_EXTENSION, init_thread_pool);
 #ifdef CONFIG_DIK_EVA
         do_posix_clock_monotonic_gettime(&ts_before);
@@ -149,13 +156,16 @@ static void wakeinit_thread(struct initcall_args *args, int local_ret, int *ret)
     entry_gate(wakeinit_label);
     dbg_pr("Post entry gate \\o/ !\n");
     *ret = local_ret;
+#ifdef CONFIG_DIK_EVA
+    get_cyclecount(*cc_done_pt);
+    do_posix_clock_monotonic_gettime(ts_done_pt);
+#endif
 #ifdef  CONFIG_DIK_THREAD_POOL
     /* This is not very performant because it one thread is created for every
      * init_module call. Just happens after the original function is called.
      * But "simulates" thread pool in term of performance.
      */
-    init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
-        "init_task_pool");
+    do_init_thread_pool();
 #endif
     wake_thread(args->sync, (unsigned int) args);
 #ifndef CONFIG_DIK_USE_THREAD
@@ -179,8 +189,6 @@ static int call_initfunc(void * data) {
 #endif
     dbg_pr("*********** CALL_INITFUNC ***********\n");
     walk_registers();
-    //change_reg_ids();
-    //walk_registers();
 
 #ifdef  CONFIG_DIK_THREAD_POOL
     data = init_task_pool_data;
@@ -192,6 +200,7 @@ static int call_initfunc(void * data) {
     dbg_pr("fn: %p and ret: %p.\n", fn, ret);
 
     exit_gate();
+    open_close(0);
     local_ret = fn();
     open_close(1);
 
@@ -223,7 +232,11 @@ struct exitcall_args {
 
 static void wakeexit_thread(struct exitcall_args *args) {
     entry_gate(wakeexit_label);
+#ifdef  CONFIG_DIK_THREAD_POOL
     wake_thread(args->sync, (unsigned int) args); 
+#else
+    return;
+#endif
 wakeexit_label:
     wakeexit_thread(args);
 }
@@ -273,8 +286,7 @@ static int switcher_init(void) {
     pr_debug("domain_switcher module_init.\n");
     register_switchers();
 #ifdef  CONFIG_DIK_THREAD_POOL
-    init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
-        "init_task_pool");
+    do_init_thread_pool();
 #endif
 
     return 0;
