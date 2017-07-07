@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
+#include <linux/smp.h>
 
-void init_perfcounters(void) {
+void init_perfcounter(void *data) {
     // in general enable all counters (including cycle counter)
     int32_t value = 1;
     value |= 2;     // reset all counters to zero.
@@ -15,4 +16,8 @@ void init_perfcounters(void) {
 
     // clear overflows: 
     asm volatile ("MCR p15, 0, %0, c9, c12, 3\t\n" :: "r"(0x8000000f));
+}
+
+void init_perfcounters(void) {
+    on_each_cpu(init_perfcounter, NULL, 1);
 }

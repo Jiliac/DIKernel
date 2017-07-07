@@ -82,6 +82,10 @@ void * init_task_pool_data;
 static int call_initfunc(void * data);
 #endif
 
+#ifdef CONFIG_DIK_EVA
+#include <linux/timekeeping.h>
+struct timespec ts_before, ts_after;
+#endif
 #ifdef  CONFIG_DIK_THREAD_POOL
 DECLARE_WAIT_QUEUE_HEAD(wq);
 #endif
@@ -90,7 +94,7 @@ static void thread_and_sync(int (*threadfn)(void *data), void *data,
 {
 #ifdef CONFIG_DIK_USE_THREAD
 #ifndef  CONFIG_DIK_THREAD_POOL
-DECLARE_WAIT_QUEUE_HEAD(wq);
+    DECLARE_WAIT_QUEUE_HEAD(wq);
 #endif
     int event = false;
     unsigned long stack;
@@ -103,6 +107,9 @@ DECLARE_WAIT_QUEUE_HEAD(wq);
     if(threadfn == call_initfunc) {
         init_task_pool_data = data;
         stack = set_task_stack_domain_id(DOMAIN_EXTENSION, init_thread_pool);
+#ifdef CONFIG_DIK_EVA
+        do_posix_clock_monotonic_gettime(&ts_before);
+#endif
         wake_up_process(init_thread_pool);
     } else {
         task = kthread_create(threadfn, data, namefmt);
@@ -164,6 +171,12 @@ static int call_initfunc(void * data) {
     int local_ret;
     int * ret; // return value on previous stack
 
+#ifdef CONFIG_DIK_EVA
+    do_posix_clock_monotonic_gettime(&ts_after);
+    printk("ts_before_call: %ld.%ld - ts_after_call: %ld.%ld\n",
+            ts_before.tv_sec, ts_before.tv_nsec,
+            ts_after.tv_sec, ts_after.tv_nsec);
+#endif
     dbg_pr("*********** CALL_INITFUNC ***********\n");
     walk_registers();
     //change_reg_ids();
