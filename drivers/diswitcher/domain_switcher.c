@@ -92,6 +92,7 @@ static inline void do_init_thread_pool(void) {
 #include <linux/timekeeping.h>
 #include <linux/dik/cyclecount.h>
 struct timespec ts_before, ts_after;
+unsigned int cc_before, cc_after;
 extern unsigned int *cc_done_pt;
 extern struct timespec *ts_done_pt;
 #endif
@@ -115,6 +116,7 @@ static void thread_and_sync(int (*threadfn)(void *data), void *data,
         change_reg_ids();
         stack = set_task_stack_domain_id(DOMAIN_EXTENSION, init_thread_pool);
 #ifdef CONFIG_DIK_EVA
+        get_cyclecount(cc_before);
         do_posix_clock_monotonic_gettime(&ts_before);
 #endif
         wake_up_process(init_thread_pool);
@@ -182,10 +184,12 @@ static int call_initfunc(void * data) {
     int * ret; // return value on previous stack
 
 #ifdef CONFIG_DIK_EVA
+    get_cyclecount(cc_after);
     do_posix_clock_monotonic_gettime(&ts_after);
     printk("ts_before_call: %ld.%ld - ts_after_call: %ld.%ld\n",
             ts_before.tv_sec, ts_before.tv_nsec,
             ts_after.tv_sec, ts_after.tv_nsec);
+    printk("cc_before_call: %i - cc_after_call: %i\n", cc_before, cc_after);
 #endif
     dbg_pr("*********** CALL_INITFUNC ***********\n");
     walk_registers();

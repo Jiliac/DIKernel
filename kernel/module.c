@@ -2998,8 +2998,8 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 
 #ifdef CONFIG_DIK_EVA
     init_perfcounters();
-    get_cyclecount(cc_ins);
     do_posix_clock_monotonic_gettime(&ts_ins);
+    get_cyclecount(cc_ins);
 #endif
 	/* Allocate and move to the final place */
 	err = move_module(mod, info);
@@ -3115,11 +3115,15 @@ static noinline int do_init_module(struct module *mod)
 	/* Start the module */
 	if (mod->init != NULL){
 #ifdef CONFIG_DIK_EVA
-        get_cyclecount(cc_init);
         do_posix_clock_monotonic_gettime(&ts_init);
+        get_cyclecount(cc_init);
 #endif
 		ret = do_one_initcall(mod->init);
 #ifdef CONFIG_DIK_EVA
+#ifndef CONFIG_DIK_USE
+        get_cyclecount(*cc_done_pt);
+        do_posix_clock_monotonic_gettime(ts_done_pt);
+#endif
         printk("ts_ins: %ld.%ld - ts_init: %ld.%ld - ts_done: %ld.%ld"
             " - mod_name: %s\n", ts_ins.tv_sec, ts_ins.tv_nsec, ts_init.tv_sec,
             ts_init.tv_nsec, ts_done.tv_sec, ts_done.tv_nsec, mod->name);
