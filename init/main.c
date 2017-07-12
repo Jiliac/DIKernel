@@ -90,9 +90,6 @@
 
 #include <linux/dik/set_wrap.h> 
 #include <asm/domain.h>
-#ifdef CONFIG_DIK_EVA
-#include <linux/dik/cyclecount.h>
-#endif
 
 static int kernel_init(void *);
 

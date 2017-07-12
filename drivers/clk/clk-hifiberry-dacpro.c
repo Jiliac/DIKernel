@@ -143,9 +143,34 @@ static struct platform_driver clk_hifiberry_dacpro_driver = {
 	},
 };
 
+#include <linux/dik/cyclecount.h>
+#define     LOOP_NB 200
 static int __init clk_hifiberry_dacpro_init(void)
 {
+#ifdef CONFIG_DIK_EVA
+    int ret;
+    int i;
+    unsigned int cc_before, cc_middle, cc_end;
+
+    for(i = 0; i<LOOP_NB; ++i) {
+        get_cyclecount(cc_before);
+        platform_driver_register(&clk_hifiberry_dacpro_driver);
+        get_cyclecount(cc_middle);
+        platform_driver_unregister(&clk_hifiberry_dacpro_driver);
+        get_cyclecount(cc_end);
+        printk("wrapper_call platform_driver_register. cc_before: %i"
+            " - cc_after: %i\n", cc_before, cc_middle);
+        printk("wrapper_call platform_driver_unregister. cc_before: %i"
+            " - cc_after: %i\n", cc_middle, cc_end);
+    }
+
+    ret = platform_driver_register(&clk_hifiberry_dacpro_driver);
+
+    return ret;
+
+#else
 	return platform_driver_register(&clk_hifiberry_dacpro_driver);
+#endif
 }
 core_initcall(clk_hifiberry_dacpro_init);
 

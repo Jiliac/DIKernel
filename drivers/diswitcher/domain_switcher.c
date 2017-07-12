@@ -94,7 +94,6 @@ static inline void do_init_thread_pool(void) {
 struct timespec ts_before, ts_after;
 unsigned int cc_before, cc_after;
 extern unsigned int *cc_done_pt;
-extern struct timespec *ts_done_pt;
 #endif
 static void thread_and_sync(int (*threadfn)(void *data), void *data,
     const char *namefmt, struct sync_args *sync)
@@ -117,7 +116,6 @@ static void thread_and_sync(int (*threadfn)(void *data), void *data,
         stack = set_task_stack_domain_id(DOMAIN_EXTENSION, init_thread_pool);
 #ifdef CONFIG_DIK_EVA
         get_cyclecount(cc_before);
-        do_posix_clock_monotonic_gettime(&ts_before);
 #endif
         wake_up_process(init_thread_pool);
     } else {
@@ -160,7 +158,6 @@ static void wakeinit_thread(struct initcall_args *args, int local_ret, int *ret)
     *ret = local_ret;
 #ifdef CONFIG_DIK_EVA
     get_cyclecount(*cc_done_pt);
-    do_posix_clock_monotonic_gettime(ts_done_pt);
 #endif
 #ifdef  CONFIG_DIK_THREAD_POOL
     /* This is not very performant because it one thread is created for every

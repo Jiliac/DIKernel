@@ -117,7 +117,7 @@ void setting_wrappers() {
     unsigned i;
     struct module * mod = NULL;
     dbg_pr("!!!!!!!!!! setting_wrappers start !!!!!!!!!!\n");
-    if(!request_module(SWITCHER_MODULE)) {
+    if(!request_module(SWITCHER_MODULE) || 1) {
         mod = find_module(WRAPPER_MODULE);
 
         wrapper_set = 1;    // WRAPPER_MODULE should be in DOMAIN_PUBLIC
@@ -132,9 +132,10 @@ void setting_wrappers() {
                 code_wrappers[i].sym_to_change);
         }
     } else
-        dbg_pr("Couldn't load %s module.\n", WRAPPER_MODULE);
+        dbg_pr("Couldn't load %s module.\n", SWITCHER_MODULE);
     dbg_pr("!!!!!!!!!! setting_wrappers end !!!!!!!!!!\n");
 }
+//EXPORT_SYMBOL(setting_wrappers);
 
 int get_wrapper_set(void) {
     return wrapper_set;

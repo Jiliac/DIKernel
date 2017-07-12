@@ -2958,13 +2958,11 @@ int __weak module_frob_arch_sections(Elf_Ehdr *hdr,
 
 #ifdef CONFIG_DIK_EVA
 #include <linux/dik/cyclecount.h>
-#include <linux/timekeeping.h>
-unsigned int cc_ins, cc_init, cc_done;
-struct timespec ts_ins, ts_init, ts_done;
+unsigned int cc_ins, cc_init, cc_done, cc_init_f;
 unsigned int * cc_done_pt = &cc_done;
-struct timespec *ts_done_pt = &ts_done;
+unsigned int * cc_init_f_pt = &cc_init_f;
 EXPORT_SYMBOL(cc_done_pt);
-EXPORT_SYMBOL(ts_done_pt);
+EXPORT_SYMBOL(cc_init_f_pt);
 #endif
 
 static struct module *layout_and_allocate(struct load_info *info, int flags)
@@ -2998,7 +2996,6 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 
 #ifdef CONFIG_DIK_EVA
     init_perfcounters();
-    do_posix_clock_monotonic_gettime(&ts_ins);
     get_cyclecount(cc_ins);
 #endif
 	/* Allocate and move to the final place */
@@ -3115,21 +3112,18 @@ static noinline int do_init_module(struct module *mod)
 	/* Start the module */
 	if (mod->init != NULL){
 #ifdef CONFIG_DIK_EVA
-        do_posix_clock_monotonic_gettime(&ts_init);
         get_cyclecount(cc_init);
 #endif
 		ret = do_one_initcall(mod->init);
 #ifdef CONFIG_DIK_EVA
 #ifndef CONFIG_DIK_USE
         get_cyclecount(*cc_done_pt);
-        do_posix_clock_monotonic_gettime(ts_done_pt);
 #endif
-        printk("ts_ins: %ld.%ld - ts_init: %ld.%ld - ts_done: %ld.%ld"
-            " - mod_name: %s\n", ts_ins.tv_sec, ts_ins.tv_nsec, ts_init.tv_sec,
-            ts_init.tv_nsec, ts_done.tv_sec, ts_done.tv_nsec, mod->name);
         printk("insert cycle_count: %d - init call cycle_count: %d"
             " - mod_name: %s\n",
             cc_init - cc_ins, cc_done - cc_init, mod->name);
+        printk("init_call_precise_time: %d - mod_name: %s\n",
+            cc_init - cc_init_f, mod->name);
 #endif
     }
 	if (ret < 0) {
