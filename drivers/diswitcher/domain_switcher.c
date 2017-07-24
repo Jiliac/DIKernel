@@ -81,6 +81,7 @@ struct task_struct * init_thread_pool;
 void * init_task_pool_data;
 static int call_initfunc(void * data);
 DECLARE_WAIT_QUEUE_HEAD(wq);
+int stack_domain_changed = 0;
 static inline void do_init_thread_pool(void) {
     init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
         "init_task_pool");
@@ -214,6 +215,11 @@ static int thread_initfunc(initcall_t fn) {
     struct initcall_args args;
     struct sync_args sync;
 
+    if(unlikely(!stack_domain_changed)) {
+        set_task_stack_domain_id(DOMAIN_EXTENSION, init_thread_pool);
+        stack_domain_changed = 1;
+    }
+
     dbg_pr("********** THREAD_INITFUNC **********\n");
 
     args.fn = fn;
@@ -287,7 +293,8 @@ static int switcher_init(void) {
     pr_debug("domain_switcher module_init.\n");
     register_switchers();
 #ifdef  CONFIG_DIK_THREAD_POOL
-    do_init_thread_pool();
+    init_thread_pool = kthread_create(call_initfunc, init_task_pool_data,
+        "init_task_pool");
 #endif
 
     return 0;
