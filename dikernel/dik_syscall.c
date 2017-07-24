@@ -1,34 +1,25 @@
-#include <linux/kernel.h>
 #include <linux/vmalloc.h>
 #include <linux/slab.h>     // for kmalloc
-#include <linux/kmod.h>     // for request_module
-#include "table_walk.h"
-#include "syms_modif.h"
+#include <linux/kmod.h>
+#include <linux/dik/myprint.h>
+#include <linux/dik/cyclecount.h>
+#include <linux/dik/set_wrap.h>
 
-#define VMALLOC_SIZE   1000000 
-#define BUF_SIZE       1000000 
+#include <linux/timekeeping.h>
+#define BIL     1000000000L
 
-void kmallocing(void) {
-    char *buf;
-    int i;
+void look_time(void) {
+    struct timespec ts;
+    long times;
+    long timen;
 
-    printk("kmalloc-inc to check its allocation process\n");
-    buf = kmalloc(BUF_SIZE, GFP_ATOMIC);
-    for(i = 0; i < BUF_SIZE / sizeof(char); i++) {
-        buf[i] = 42;
-    }
+    do_posix_clock_monotonic_gettime(&ts);
+    times = ts.tv_sec;
+    timen = ts.tv_nsec;
+    dbg_pr("time = %ld.%ld.\n", times, timen);
 }
 
-void vmallocing(void) {
-    int * pt;
-    printk("vmalloc-ing\n");
-    pt = (int*) vmalloc(VMALLOC_SIZE * sizeof(int));
-    printk("allocated address: %p\n", pt);
-    walk_pgd((long unsigned int) pt); 
-    vfree(pt);
-}
-
+/******************** System Call *********************/
 asmlinkage long sys_dikcall(void) {
-    vmallocing();
     return 0;
 }

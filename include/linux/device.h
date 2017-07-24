@@ -1040,6 +1040,9 @@ int dev_vprintk_emit(int level, const struct device *dev,
 extern __printf(3, 4)
 int dev_printk_emit(int level, const struct device *dev, const char *fmt, ...);
 
+extern
+void __dev_printk(const char *level, const struct device *dev,
+			struct va_format *vaf);
 extern __printf(3, 4)
 void dev_printk(const char *level, const struct device *dev,
 		const char *fmt, ...);

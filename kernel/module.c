@@ -62,6 +62,9 @@
 #include <uapi/linux/module.h>
 #include "module-internal.h"
 
+#include <linux/dik/domain.h>
+#include <linux/dik/set_wrap.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/module.h>
 
@@ -807,6 +810,17 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
 	if (mutex_lock_interruptible(&module_mutex) != 0)
 		return -EINTR;
 
+#ifdef CONFIG_DIK_USE
+    pr_debug("delete_module system call to delete: %s module.\n", name);
+    /* Doesn't matter if WRAPPER_MODULE is removed. Wrapper are for
+     * compatibility, not security.
+     */
+    if(!strcmp(name, SWITCHER_MODULE)) {   
+        pr_debug("%s cannot be removed.\n", name);
+        return 0;
+    }
+#endif
+
 	mod = find_module(name);
 	if (!mod) {
 		ret = -ENOENT;
@@ -844,8 +858,13 @@ SYSCALL_DEFINE2(delete_module, const char __user *, name_user,
 
 	mutex_unlock(&module_mutex);
 	/* Final destruction now no one is using it. */
+    pr_debug("kernel/module.c: about to call mod->exit if it exits.\n");
 	if (mod->exit != NULL)
-		mod->exit();
+#ifdef CONFIG_DIK_USE
+        call_wrapper_exitcall(mod->exit);
+#else
+        mod->exit();
+#endif
 	blocking_notifier_call_chain(&module_notify_list,
 				     MODULE_STATE_GOING, mod);
 	async_synchronize_full();
@@ -1954,7 +1973,6 @@ static int simplify_symbols(struct module *mod, const struct load_info *info)
 
 			/* We compiled with -fno-common.  These are not
 			   supposed to happen.  */
-			pr_debug("Common symbol: %s\n", name);
 			pr_warn("%s: please compile with -fno-common\n",
 			       mod->name);
 			ret = -ENOEXEC;
@@ -1962,8 +1980,6 @@ static int simplify_symbols(struct module *mod, const struct load_info *info)
 
 		case SHN_ABS:
 			/* Don't need to do anything */
-			pr_debug("Absolute symbol: 0x%08lx\n",
-			       (long)sym[i].st_value);
 			break;
 
 		case SHN_UNDEF:
@@ -2385,7 +2401,7 @@ static void dynamic_debug_remove(struct _ddebug *debug)
 
 void * __weak module_alloc(unsigned long size)
 {
-    printk("vmalloc_exec called by module_alloc.\n");
+    pr_debug("vmalloc_exec called by module_alloc.\n");
 	return vmalloc_exec(size);
 }
 
@@ -2516,7 +2532,6 @@ static int copy_module_from_user(const void __user *umod, unsigned long len,
 		return err;
 
 	/* Suck in entire file: we'll want most of it. */
-    printk("kernel/module.c: vmalloc-ing module from userspace in copy_module_from_user\n");
 	info->hdr = __vmalloc(info->len,
 			GFP_KERNEL | __GFP_HIGHMEM | __GFP_NOWARN, PAGE_KERNEL);
 	if (!info->hdr)
@@ -2805,6 +2820,7 @@ static int find_module_sections(struct module *mod, struct load_info *info)
 	return 0;
 }
 
+extern int get_wrapper_set(void);
 static int move_module(struct module *mod, struct load_info *info)
 {
 	int i;
@@ -2841,6 +2857,11 @@ static int move_module(struct module *mod, struct load_info *info)
 		mod->module_init = ptr;
 	} else
 		mod->module_init = NULL;
+
+#ifdef CONFIG_DIK_USE
+    if(get_wrapper_set())
+        module_change_domain(mod);
+#endif
 
 	/* Transfer each section which specifies SHF_ALLOC */
 	pr_debug("final section addresses:\n");
@@ -2935,12 +2956,20 @@ int __weak module_frob_arch_sections(Elf_Ehdr *hdr,
 	return 0;
 }
 
+#ifdef CONFIG_DIK_EVA
+#include <linux/dik/cyclecount.h>
+unsigned int cc_ins, cc_init, cc_done, cc_init_f;
+unsigned int * cc_done_pt = &cc_done;
+unsigned int * cc_init_f_pt = &cc_init_f;
+EXPORT_SYMBOL(cc_done_pt);
+EXPORT_SYMBOL(cc_init_f_pt);
+#endif
+
 static struct module *layout_and_allocate(struct load_info *info, int flags)
 {
 	/* Module within temporary copy. */
 	struct module *mod;
 	int err;
-    printk("kernel/module.c: layout_and_allocate called\n\n");
 
 	mod = setup_load_info(info, flags);
 	if (IS_ERR(mod))
@@ -2965,6 +2994,10 @@ static struct module *layout_and_allocate(struct load_info *info, int flags)
 	layout_sections(mod, info);
 	layout_symtab(mod, info);
 
+#ifdef CONFIG_DIK_EVA
+    init_perfcounters();
+    get_cyclecount(cc_ins);
+#endif
 	/* Allocate and move to the final place */
 	err = move_module(mod, info);
 	if (err)
@@ -3051,9 +3084,7 @@ static void do_free_init(struct rcu_head *head)
 	struct mod_initfree *m = container_of(head, struct mod_initfree, rcu);
 	module_memfree(m->module_init);
 	kfree(m);
-}
-
-/*
+} /*
  * This is where the real work happens.
  *
  * Keep it uninlined to provide a reliable breakpoint target, e.g. for the gdb
@@ -3079,8 +3110,22 @@ static noinline int do_init_module(struct module *mod)
 
 	do_mod_ctors(mod);
 	/* Start the module */
-	if (mod->init != NULL)
+	if (mod->init != NULL){
+#ifdef CONFIG_DIK_EVA
+        get_cyclecount(cc_init);
+#endif
 		ret = do_one_initcall(mod->init);
+#ifdef CONFIG_DIK_EVA
+#ifndef CONFIG_DIK_USE
+        get_cyclecount(*cc_done_pt);
+#endif
+        printk("insert cycle_count: %d - init call cycle_count: %d"
+            " - mod_name: %s\n",
+            cc_init - cc_ins, cc_done - cc_init, mod->name);
+        printk("init_call_precise_time: %d - mod_name: %s\n",
+            cc_init - cc_init_f, mod->name);
+#endif
+    }
 	if (ret < 0) {
 		goto fail_free_freeinit;
 	}

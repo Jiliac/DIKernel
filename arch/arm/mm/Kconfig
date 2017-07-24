@@ -605,6 +605,28 @@ config CPU_USE_DOMAINS
 	  This option enables or disables the use of domain switching
 	  via the set_fs() function.
 
+config DIK_USE
+    bool "Turn on DIKernel usage."
+    help
+        For DIKernel code to be used
+
+config DIK_EVA
+    bool "DIK performance evalutation"
+    help
+        To add some prints in logs to measure the performance loss DIK causes
+
+config DIK_USE_THREAD
+    bool "Turn on DIKernel thread usage. Break security if not used."
+    depends on DIK_USE
+    help
+       For DIKernel to use threads to run extension. Break security if not used. 
+
+config DIK_THREAD_POOL
+    bool "Usage of thread pool for better performance."
+    depends on DIK_USE_THREAD
+    help
+        Thread are pre-created at boot time and used when extensions are called.
+
 #
 # CPU supports 36-bit I/O
 #

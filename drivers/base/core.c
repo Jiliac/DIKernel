@@ -2092,7 +2092,7 @@ int dev_printk_emit(int level, const struct device *dev, const char *fmt, ...)
 }
 EXPORT_SYMBOL(dev_printk_emit);
 
-static void __dev_printk(const char *level, const struct device *dev,
+void __dev_printk(const char *level, const struct device *dev,
 			struct va_format *vaf)
 {
 	if (dev)
@@ -2101,6 +2101,7 @@ static void __dev_printk(const char *level, const struct device *dev,
 	else
 		printk("%s(NULL device *): %pV", level, vaf);
 }
+EXPORT_SYMBOL(__dev_printk);
 
 void dev_printk(const char *level, const struct device *dev,
 		const char *fmt, ...)

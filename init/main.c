@@ -88,7 +88,8 @@
 #include <asm/sections.h>
 #include <asm/cacheflush.h>
 
-#include<linux/dik/wrapper.h> 
+#include <linux/dik/set_wrap.h> 
+#include <asm/domain.h>
 
 static int kernel_init(void *);
 
@@ -766,7 +767,11 @@ static int __init_or_module do_one_initcall_debug(initcall_t fn)
 
 	printk(KERN_DEBUG "calling  %pF @ %i\n", fn, task_pid_nr(current));
 	calltime = ktime_get();
-	ret = fn();
+#ifdef CONFIG_DIK_USE
+	ret = call_wrapper_initcall(fn);
+#else
+    ret = fn();
+#endif
 	rettime = ktime_get();
 	delta = ktime_sub(rettime, calltime);
 	duration = (unsigned long long) ktime_to_ns(delta) >> 10;
@@ -788,7 +793,11 @@ int __init_or_module do_one_initcall(initcall_t fn)
 	if (initcall_debug)
 		ret = do_one_initcall_debug(fn);
 	else
-		ret = fn();
+#ifdef CONFIG_DIK_USE
+        ret = call_wrapper_initcall(fn);
+#else
+        ret = fn();
+#endif        
 
 	msgbuf[0] = 0;
 
@@ -972,6 +981,7 @@ static int __ref kernel_init(void *unused)
 	      "See Linux Documentation/init.txt for guidance.");
 }
 
+#include <linux/dik/stack.h>    // print stack pointer
 static noinline void __init kernel_init_freeable(void)
 {
 	/*
@@ -1033,5 +1043,13 @@ static noinline void __init kernel_init_freeable(void)
 
 	integrity_load_keys();
 	load_default_modules();
-    setting_wrappers();
+/* Placed in DIK syscall for debug
+ */
+#ifdef CONFIG_DIK_USE
+    if(!request_module("wrapper"))
+        setting_wrappers();
+#endif
+#ifdef CONFIG_DIK_EVA
+    printk("Start evaluation\n");
+#endif
 }
